@@ -1,0 +1,204 @@
+openapi: 3.1.0
+info:
+  title: Paperless REST API
+  version: v1.0
+servers:
+  - url: http://localhost:8080
+    description: Generated server url
+paths:
+  /users/register:
+    post:
+      tags:
+        - user-controller
+      operationId: register
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthDTO"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: string
+  /users/login:
+    post:
+      tags:
+        - user-controller
+      operationId: login
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AuthDTO"
+        required: true
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: object
+  /document:
+    get:
+      tags:
+        - document-controller
+      operationId: findAll
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ResponseDocumentDTO"
+    post:
+      tags:
+        - document-controller
+      operationId: create
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestDocumentDTO"
+        required: true
+      responses:
+        "201":
+          description: Created
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponseDocumentDTO"
+  /document/{documentId}:
+    get:
+      tags:
+        - document-controller
+      operationId: findById
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+          content:
+            '*/*':
+              schema:
+                $ref: "#/components/schemas/ResponseDocumentDTO"
+    delete:
+      tags:
+        - document-controller
+      operationId: delete
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: No Content
+  /document/{documentId}/data:
+    get:
+      tags:
+        - document-controller
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+    delete:
+      tags:
+        - document-controller
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Resource deletion successfull
+components:
+  schemas:
+    AuthDTO:
+      type: object
+      properties:
+        username:
+          type: string
+          maxLength: 20
+          minLength: 3
+        password:
+          type: string
+          maxLength: 2147483647
+          minLength: 8
+      required:
+        - password
+        - username
+    DocumentType:
+      type: string
+      enum:
+        - RECEIPT
+        - CONTRACT
+        - BANK_STATEMENT
+        - CERTIFICATE
+        - NOTE
+        - PASSPORT
+        - OTHER
+    RequestDocumentDTO:
+      type: object
+      properties:
+        title:
+          type: string
+        type:
+          $ref: "#/components/schemas/DocumentType"
+      required:
+        - title
+    LocalTime:
+      type: object
+      properties:
+        hour:
+          type: integer
+          format: int32
+        minute:
+          type: integer
+          format: int32
+        second:
+          type: integer
+          format: int32
+        nano:
+          type: integer
+          format: int32
+    ResponseDocumentDTO:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        title:
+          type: string
+        documentType:
+          $ref: "#/components/schemas/DocumentType"
+        content:
+          type: string
+        created:
+          type: string
+          format: date
+        added:
+          $ref: "#/components/schemas/LocalTime"
+        modified:
+          $ref: "#/components/schemas/LocalTime"
