@@ -13,4 +13,5 @@ public class RequestDocumentDTO {
 
     @NotBlank(message = "Title cannot be empty")
     private String title;
-    private DocumentTypeEnum type;}
+    private DocumentTypeEnum type;
+}

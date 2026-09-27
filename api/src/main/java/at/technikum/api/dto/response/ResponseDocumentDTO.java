@@ -1,5 +1,6 @@
 package at.technikum.api.dto.response;
 
+import at.technikum.api.entity.DocumentTypeEnum;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,6 +17,7 @@ public class ResponseDocumentDTO {
     private UUID id;
     private String title;
     private String content; // for ocr
+    private DocumentTypeEnum documentType;
     private LocalDate created;
     private LocalTime added;
     private LocalTime modified;
