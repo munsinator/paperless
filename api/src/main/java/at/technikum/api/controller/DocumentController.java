@@ -56,4 +56,14 @@ public class DocumentController {
         return ResponseEntity.noContent().build(); // TODO check if HTTP 204 No Content needed, or data from the document is displayed after deleting
     }
 
+    @GetMapping("/{documentId}/data")
+    public ResponseEntity<ResponseDocumentDTO> findDataById(@PathVariable UUID documentId) {
+        return ResponseEntity.ok().build();
+    }
+
+    @DeleteMapping("/{documentId}/data")
+    public ResponseEntity<Void> deleteData(@PathVariable UUID documentId) {
+        return ResponseEntity.ok().build();
+    }
+
 }
