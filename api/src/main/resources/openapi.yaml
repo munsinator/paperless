@@ -152,17 +152,22 @@ components:
     DocumentType:
       type: string
       enum:
-        - BILL
+        - RECEIPT
+        - CONTRACT
+        - BANK_STATEMENT
+        - CERTIFICATE
+        - NOTE
+        - PASSPORT
+        - OTHER
     RequestDocumentDTO:
       type: object
       properties:
         title:
           type: string
-        documentType:
+        type:
           $ref: "#/components/schemas/DocumentType"
       required:
         - title
-        - documentType
     LocalTime:
       type: object
       properties:
