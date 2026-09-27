@@ -106,6 +106,33 @@ paths:
       responses:
         "204":
           description: No Content
+  /document/{documentId}/data:
+    get:
+      tags:
+        - document-controller
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: OK
+    delete:
+      tags:
+        - document-controller
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Resource deletion successfull
 components:
   schemas:
     AuthDTO:
