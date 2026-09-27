@@ -21,8 +21,8 @@ public class Document {
     private String title;
     private String content; // for ocr
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "document_type")
+    @ManyToOne
+    @JoinColumn(name = "document_type")
     private DocumentType type;
 
     private LocalDate created;

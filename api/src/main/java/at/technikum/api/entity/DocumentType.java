@@ -1,17 +1,21 @@
 package at.technikum.api.entity;
 
-public enum DocumentType {
-    RECEIPT,
-    CONTRACT,
-    BANK_STATEMENT,
-    CERTIFICATE,
-    NOTE,
-    PASSPORT,
-    OTHER
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+import java.util.UUID;
+
+@Entity
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+public class DocumentType {
+    @Id
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, unique = true)
+    private DocumentTypeEnum type;
 }
-/*TODO Check if it's not better to use Categories of types of documents such as:
-    - Legal and Administrative
-    - Finance
-    - Personal
-    - Academia
- */
