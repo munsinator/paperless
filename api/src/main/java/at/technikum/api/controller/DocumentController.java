@@ -2,6 +2,7 @@ package at.technikum.api.controller;
 
 import at.technikum.api.dto.request.RequestDocumentDTO;
 import at.technikum.api.dto.response.ResponseDocumentDTO;
+import at.technikum.api.dto.response.ResponseDocumentData;
 import at.technikum.api.mapper.DocumentMapper;
 import at.technikum.api.service.DocumentService;
 import at.technikum.api.service.DocumentServiceImpl;
@@ -57,13 +58,15 @@ public class DocumentController {
     }
 
     @GetMapping("/{documentId}/data")
-    public ResponseEntity<ResponseDocumentDTO> findDataById(@PathVariable UUID documentId) {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<ResponseDocumentData> findDataById(@PathVariable UUID documentId) {
+        //TODO: Create minIO service to fetch data and don't forget to map the response from service to ResponseDocumentData
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
 
     @DeleteMapping("/{documentId}/data")
-    public ResponseEntity<Void> deleteData(@PathVariable UUID documentId) {
-        return ResponseEntity.ok().build();
+    public ResponseEntity<String> deleteData(@PathVariable UUID documentId) {
+        //TODO: Create minIO service to delete data
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
 
 }
