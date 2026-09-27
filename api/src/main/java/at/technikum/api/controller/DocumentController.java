@@ -32,7 +32,7 @@ public class DocumentController {
     @PostMapping
     public ResponseEntity<ResponseDocumentDTO> create(@Valid @RequestBody RequestDocumentDTO requestDocumentDTO) {
         Document entityToSave = mapper.dtoToEntity(requestDocumentDTO);
-        Document savedEntity = documentService.save(entityToSave);
+        Document savedEntity = documentService.save(entityToSave, requestDocumentDTO.getType());
         return new ResponseEntity<>(mapper.entityToDto(savedEntity), HttpStatus.CREATED);
     }
 
