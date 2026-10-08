@@ -9,13 +9,12 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface DocumentMapper {
 
-    // Entity -> ResponseDTO (Kategorie-Name aus dem Category-Objekt lesen)
-    @Mapping(target = "category", source = "category.name")
+    // Ingoing: RequestDto -> Entity for DB-Speicherung
+    @Mapping(target = "type", ignore = true)
+    Document dtoToEntity(RequestDocumentDTO dto);
+
+    // Outgoing: Entity from DB -> ResponseDto for Client
+    @Mapping(target = "documentType", source = "type.type")
     ResponseDocumentDTO entityToDto(Document entity);
 
-    // RequestDTO -> Entity (Category wird im Service gesetzt)
-    @Mapping(target = "id", ignore = true)
-    @Mapping(target = "createdAt", ignore = true)
-    @Mapping(target = "category", ignore = true)
-    Document dtoToEntity(RequestDocumentDTO dto);
 }

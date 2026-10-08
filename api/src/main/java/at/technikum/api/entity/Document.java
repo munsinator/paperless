@@ -21,10 +21,6 @@ public class Document {
 
     private String title;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id")
-    private Category category;
-
     @Column(columnDefinition = "TEXT")
     private String ocrText;
 
@@ -38,4 +34,8 @@ public class Document {
     @CollectionTable(name = "document_tags", joinColumns = @JoinColumn(name = "document_id"))
     @Column(name = "tag")
     private List<String> tags;
+   
+    @ManyToOne
+    @JoinColumn(name = "document_type")
+    private DocumentType type;
 }

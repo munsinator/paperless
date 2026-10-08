@@ -1,6 +1,7 @@
 package at.technikum.api.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
+import at.technikum.api.entity.DocumentTypeEnum;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -14,7 +15,6 @@ public class RequestDocumentDTO {
 
     @NotBlank(message = "Title cannot be empty")
     private String title;
-
-    private String category;
     private List<String> tags;
+    private DocumentTypeEnum type;
 }

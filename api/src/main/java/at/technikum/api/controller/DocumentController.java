@@ -2,6 +2,7 @@ package at.technikum.api.controller;
 
 import at.technikum.api.dto.request.RequestDocumentDTO;
 import at.technikum.api.dto.response.ResponseDocumentDTO;
+import at.technikum.api.dto.response.ResponseDocumentData;
 import at.technikum.api.mapper.DocumentMapper;
 import at.technikum.api.service.DocumentService;
 import at.technikum.api.service.DocumentServiceImpl;
@@ -31,7 +32,7 @@ public class DocumentController {
     @PostMapping
     public ResponseEntity<ResponseDocumentDTO> create(@Valid @RequestBody RequestDocumentDTO requestDocumentDTO) {
         Document entityToSave = mapper.dtoToEntity(requestDocumentDTO);
-        Document savedEntity = documentService.save(entityToSave, requestDocumentDTO.getCategory());
+        Document savedEntity = documentService.save(entityToSave, requestDocumentDTO.getType());
         return new ResponseEntity<>(mapper.entityToDto(savedEntity), HttpStatus.CREATED);
     }
 
@@ -54,6 +55,18 @@ public class DocumentController {
     public ResponseEntity<Void> delete(@PathVariable UUID documentId) {
         documentService.delete(documentId);
         return ResponseEntity.noContent().build(); // TODO check if HTTP 204 No Content needed, or data from the document is displayed after deleting
+    }
+
+    @GetMapping("/{documentId}/data")
+    public ResponseEntity<ResponseDocumentData> findDataById(@PathVariable UUID documentId) {
+        //TODO: Create minIO service to fetch data and don't forget to map the response from service to ResponseDocumentData
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    }
+
+    @DeleteMapping("/{documentId}/data")
+    public ResponseEntity<String> deleteData(@PathVariable UUID documentId) {
+        //TODO: Create minIO service to delete data
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
 
 }
