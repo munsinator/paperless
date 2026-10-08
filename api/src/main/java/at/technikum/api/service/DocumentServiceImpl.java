@@ -1,5 +1,6 @@
 package at.technikum.api.service;
 
+import at.technikum.api.entity.Category;
 import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
@@ -11,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
