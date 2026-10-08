@@ -7,7 +7,7 @@ import java.util.UUID;
 
 public interface DocumentService {
 
-    Document save(Document document);
+    Document save(Document document, String categoryName);
 
     void delete(UUID documentId);
 

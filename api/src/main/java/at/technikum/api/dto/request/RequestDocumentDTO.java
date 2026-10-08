@@ -1,9 +1,11 @@
 package at.technikum.api.dto.request;
 
-import jakarta.validation.constraints.*;
+import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -12,4 +14,7 @@ public class RequestDocumentDTO {
 
     @NotBlank(message = "Title cannot be empty")
     private String title;
+
+    private String category;
+    private List<String> tags;
 }

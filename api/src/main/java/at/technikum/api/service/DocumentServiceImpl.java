@@ -1,11 +1,14 @@
 package at.technikum.api.service;
 
+import at.technikum.api.entity.Category;
 import at.technikum.api.entity.Document;
+import at.technikum.api.repository.CategoryRepository;
 import at.technikum.api.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -14,12 +17,19 @@ import java.util.UUID;
 public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository documentRepository;
+    private final CategoryRepository categoryRepository;
     // TODO check if mapping has to happen in controller or service
     // private final DocumentMapper mapper;
 
     @Override
     @Transactional
-    public Document save(Document document) {
+    public Document save(Document document, String categoryName) {
+        document.setCreatedAt(LocalDate.now());
+        if (categoryName != null && !categoryName.isBlank()) {
+            Category category = categoryRepository.findByName(categoryName)
+                    .orElseThrow(() -> new IllegalArgumentException("Kategorie nicht gefunden: " + categoryName));
+            document.setCategory(category);
+        }
         return documentRepository.save(document);
     }
 

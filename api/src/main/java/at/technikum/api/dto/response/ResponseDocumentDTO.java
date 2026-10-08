@@ -5,7 +5,7 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.time.LocalTime;
+import java.util.List;
 import java.util.UUID;
 
 @Data
@@ -15,12 +15,10 @@ public class ResponseDocumentDTO {
 
     private UUID id;
     private String title;
-    private String content; // for ocr
-    private LocalDate created;
-    private LocalTime added;
-    private LocalTime modified;
-
-    // special feature ?
-    // private String type;
-
+    private String category;
+    private LocalDate createdAt;
+    private List<String> tags;
+    private String summary;
+    private String ocrText;
+    private String fileUrl;
 }
