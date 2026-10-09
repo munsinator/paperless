@@ -103,14 +103,14 @@
                             class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300" />
                     </div>
 
-                    <!-- Kategorie -->
+                    <!-- Dokumenttyp -->
                     <div class="space-y-1">
-                        <label for="detail-category" class="block text-xs font-medium text-slate-700">Kategorie</label>
-                        <select id="detail-category" formControlName="category"
+                        <label for="detail-document-type" class="block text-xs font-medium text-slate-700">Dokumenttyp</label>
+                        <select id="detail-document-type" formControlName="documentType"
                             class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300">
-                            <option value="">Keine Kategorie</option>
-                            @for (cat of categories(); track cat) {
-                            <option [value]="cat">{{ cat }}</option>
+                            <option value="">Kein Dokumenttyp</option>
+                            @for (documentType of documentTypes; track documentType.value) {
+                            <option [value]="documentType.value">{{ documentType.label }}</option>
                             }
                         </select>
                     </div>

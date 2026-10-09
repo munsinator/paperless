@@ -1,7 +1,7 @@
 import { Component, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Document } from '../../models/document.model';
+import { Document, documentTypeLabel } from '../../models/document.model';
 import { EditDocumentModalComponent } from '../edit-document-modal/edit-document-modal.component';
 
 @Component({
@@ -12,6 +12,7 @@ import { EditDocumentModalComponent } from '../edit-document-modal/edit-document
 })
 export class DocumentCardComponent {
     readonly document = input.required<Document>();
+    readonly documentTypeLabel = documentTypeLabel;
 
     // State für das Edit-Modal
     readonly isEditModalOpen = signal(false);

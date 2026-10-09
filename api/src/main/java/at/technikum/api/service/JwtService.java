@@ -16,7 +16,7 @@ import java.util.Date;
 @Service
 public class JwtService {
 
-    private static final long TOKEN_LIFETIME_MILLIS = 30 * 60 * 1000L;
+    private static final long TOKEN_LIFETIME_MILLIS = 60 * 60 * 1000L;
 
     @Value("${jwt.secret:}")
     private String secret;

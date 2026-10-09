@@ -2,24 +2,25 @@ import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable, map } from 'rxjs';
 import { environment } from '../environment';
-import { Document } from '../models/document.model';
+import { Document, DocumentType } from '../models/document.model';
 
 type ApiDocument = {
     id: string;
     title: string;
-    documentType?: string | null;
-    content?: string | null;
-    created?: string | null;
+    documentType?: DocumentType | null;
+    createdAt?: string | null;
+    ocrText?: string | null;
     tags?: string[] | null;
     summary?: string | null;
     fileUrl?: string | null;
 };
 
-type DocumentResponse = Document | ApiDocument;
+type DocumentResponse = ApiDocument;
 
 export interface CreateDocumentRequest {
     title: string;
-    type?: 'RECEIPT' | 'CONTRACT' | 'BANK_STATEMENT' | 'CERTIFICATE' | 'NOTE' | 'PASSPORT' | 'OTHER';
+    type?: DocumentType;
+    tags?: string[];
 }
 
 export interface UploadDocumentRequest extends CreateDocumentRequest {
@@ -47,19 +48,17 @@ export class DocumentService {
             .pipe(map(document => this.toDocument(document)));
     }
 
-    uploadDocument(file: File, documentData: UploadDocumentRequest): Observable<Document> {
-        const formData = new FormData();
-        formData.append('file', file, file.name);
-        formData.append('title', documentData.title);
-        if (documentData.type) formData.append('type', documentData.type);
-        formData.append('tags', JSON.stringify(documentData.tags));
-
-        return this.http.post<DocumentResponse>(this.apiUrl, formData)
-            .pipe(map(document => this.toDocument(document)));
+    uploadDocument(_file: File, documentData: UploadDocumentRequest): Observable<Document> {
+        return this.createDocument(documentData);
     }
 
     updateDocument(id: string, documentData: Partial<Document>): Observable<Document> {
-        return this.http.put<DocumentResponse>(`${this.apiUrl}/${encodeURIComponent(id)}`, documentData)
+        const request: CreateDocumentRequest = { title: documentData.title ?? '' };
+        if (documentData.title !== undefined) request.title = documentData.title;
+        if (documentData.documentType !== undefined) request.type = documentData.documentType;
+        if (documentData.tags !== undefined) request.tags = documentData.tags;
+
+        return this.http.put<DocumentResponse>(`${this.apiUrl}/${encodeURIComponent(id)}`, request)
             .pipe(map(document => this.toDocument(document)));
     }
 
@@ -78,16 +77,14 @@ export class DocumentService {
     }
 
     private toDocument(response: DocumentResponse): Document {
-        if ('createdAt' in response) return { ...response };
-
         return {
             id: response.id,
             title: response.title,
-            createdAt: response.created ?? '',
-            category: response.documentType ?? undefined,
-            tags: response.tags ?? undefined,
+            documentType: response.documentType ?? undefined,
+            createdAt: response.createdAt ?? '',
+            tags: response.tags ?? [],
             summary: response.summary ?? undefined,
-            ocrText: response.content ?? undefined,
+            ocrText: response.ocrText ?? undefined,
             fileUrl: response.fileUrl ?? undefined
         };
     }

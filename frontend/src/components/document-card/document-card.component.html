@@ -5,10 +5,10 @@
             class="font-medium text-slate-800 hover:text-slate-600 text-sm block break-words">
             {{ document().title }}
         </a>
-        @if (document().category) {
+        @if (document().documentType) {
         <span
             class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
-            {{ document().category }}
+            {{ documentTypeLabel(document().documentType) }}
         </span>
         }
     </div>

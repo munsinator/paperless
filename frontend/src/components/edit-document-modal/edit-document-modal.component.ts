@@ -1,6 +1,6 @@
 import { Component, input, output, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Document } from '../../models/document.model';
+import { Document, DocumentType } from '../../models/document.model';
 
 @Component({
     selector: 'app-edit-document-modal',
@@ -13,7 +13,15 @@ export class EditDocumentModalComponent implements OnInit {
 
     // Inputs & Outputs
     readonly document = input.required<Document>();
-    readonly categories = input<string[]>(['Rechnung', 'Vertrag', 'Wohnen', 'Finanzen', 'Arbeit', 'Gesundheit', 'Versicherung']);
+    readonly documentTypes: { label: string; value: DocumentType }[] = [
+        { label: 'Rechnung', value: 'RECEIPT' },
+        { label: 'Vertrag', value: 'CONTRACT' },
+        { label: 'Bank / Finanzen', value: 'BANK_STATEMENT' },
+        { label: 'Zertifikat', value: 'CERTIFICATE' },
+        { label: 'Notiz', value: 'NOTE' },
+        { label: 'Reisepass', value: 'PASSPORT' },
+        { label: 'Sonstiges', value: 'OTHER' }
+    ];
 
     readonly saved = output<Partial<Document>>();
     readonly closed = output<void>();
@@ -21,7 +29,7 @@ export class EditDocumentModalComponent implements OnInit {
     // Formular-Definition
     readonly editForm = this.fb.nonNullable.group({
         title: ['', [Validators.required]],
-        category: [''],
+        documentType: [''],
         tags: ['']
     });
 
@@ -29,7 +37,7 @@ export class EditDocumentModalComponent implements OnInit {
         const doc = this.document();
         this.editForm.patchValue({
             title: doc.title,
-            category: doc.category || '',
+            documentType: doc.documentType || '',
             tags: doc.tags ? doc.tags.join(', ') : ''
         });
     }
@@ -45,9 +53,10 @@ export class EditDocumentModalComponent implements OnInit {
             .map(tag => tag.trim())
             .filter(tag => tag.length > 0);
 
+        const documentType = this.documentTypes.find(item => item.value === formValues.documentType)?.value;
         const updatedData: Partial<Document> = {
             title: formValues.title,
-            category: formValues.category || undefined,
+            documentType,
             tags: tagsArray
         };
 

@@ -1,6 +1,9 @@
 package at.technikum.api;
 
 import at.technikum.api.controller.DocumentController;
+import at.technikum.api.entity.Document;
+import at.technikum.api.entity.DocumentType;
+import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.mapper.DocumentMapperImpl;
 import at.technikum.api.service.JwtService;
@@ -16,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
 import java.util.UUID;
+import java.time.LocalDate;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -59,6 +63,25 @@ class DocumentControllerTests {
     }
 
     @Test
+    void get_documents_returns_saved_metadata() throws Exception {
+        Document document = new Document();
+        document.setId(UUID.randomUUID());
+        document.setTitle("Semesterrechnung");
+        document.setCreatedAt(LocalDate.of(2026, 10, 9));
+        document.setTags(List.of("Studium", "Rechnung"));
+        document.setType(new DocumentType(DocumentTypeEnum.RECEIPT));
+        when(documentService.findAllDocuments(null)).thenReturn(List.of(document));
+
+        mockMvc.perform(get("/document"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].title").value("Semesterrechnung"))
+                .andExpect(jsonPath("$[0].createdAt").value("2026-10-09"))
+                .andExpect(jsonPath("$[0].documentType").value("RECEIPT"))
+                .andExpect(jsonPath("$[0].tags[0]").value("Studium"))
+                .andExpect(jsonPath("$[0].tags[1]").value("Rechnung"));
+    }
+
+    @Test
     void post_document_with_blank_title_returns_bad_request()
             throws Exception {
         mockMvc.perform(post("/document")
@@ -69,6 +92,64 @@ class DocumentControllerTests {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(documentService);
+    }
+
+    @Test
+    void post_document_saves_and_returns_metadata() throws Exception {
+        Document savedDocument = new Document();
+        savedDocument.setId(UUID.randomUUID());
+        savedDocument.setTitle("Semesterrechnung");
+        savedDocument.setTags(List.of("Studium", "Rechnung"));
+        savedDocument.setCreatedAt(LocalDate.now());
+        savedDocument.setType(new DocumentType(DocumentTypeEnum.RECEIPT));
+        when(documentService.save(any(Document.class), eq(DocumentTypeEnum.RECEIPT)))
+                .thenReturn(savedDocument);
+
+        mockMvc.perform(post("/document")
+                        .contentType("application/json")
+                        .content("""
+                                {"title":"Semesterrechnung","type":"RECEIPT","tags":["Studium","Rechnung"]}
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").value(savedDocument.getId().toString()))
+                .andExpect(jsonPath("$.title").value("Semesterrechnung"))
+                .andExpect(jsonPath("$.createdAt").value(LocalDate.now().toString()))
+                .andExpect(jsonPath("$.documentType").value("RECEIPT"))
+                .andExpect(jsonPath("$.tags[0]").value("Studium"))
+                .andExpect(jsonPath("$.tags[1]").value("Rechnung"));
+
+        verify(documentService).save(argThat(document ->
+                document.getTitle().equals("Semesterrechnung")
+                        && document.getTags().equals(List.of("Studium", "Rechnung"))),
+                eq(DocumentTypeEnum.RECEIPT));
+    }
+
+    @Test
+    void put_document_updates_metadata() throws Exception {
+        UUID documentId = UUID.randomUUID();
+        Document updatedDocument = new Document();
+        updatedDocument.setId(documentId);
+        updatedDocument.setTitle("Aktualisierte Rechnung");
+        updatedDocument.setTags(List.of("Studium"));
+        updatedDocument.setCreatedAt(LocalDate.now());
+        updatedDocument.setType(new DocumentType(DocumentTypeEnum.RECEIPT));
+        when(documentService.update(eq(documentId), any(Document.class), eq(DocumentTypeEnum.RECEIPT)))
+                .thenReturn(updatedDocument);
+
+        mockMvc.perform(put("/document/{documentId}", documentId)
+                        .contentType("application/json")
+                        .content("""
+                                {"title":"Aktualisierte Rechnung","type":"RECEIPT","tags":["Studium"]}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(documentId.toString()))
+                .andExpect(jsonPath("$.title").value("Aktualisierte Rechnung"))
+                .andExpect(jsonPath("$.tags[0]").value("Studium"));
+
+        verify(documentService).update(eq(documentId), argThat(document ->
+                document.getTitle().equals("Aktualisierte Rechnung")
+                        && document.getTags().equals(List.of("Studium"))),
+                eq(DocumentTypeEnum.RECEIPT));
     }
 
     @Test

@@ -75,14 +75,14 @@
                 }
             </div>
 
-            <!-- Kategorie Dropdown -->
+            <!-- Dokumenttyp -->
             <div class="space-y-1">
-                <label for="doc-category" class="block text-xs font-medium text-slate-700">Kategorie</label>
-                <select id="doc-category" formControlName="category"
+                <label for="doc-document-type" class="block text-xs font-medium text-slate-700">Dokumenttyp</label>
+                <select id="doc-document-type" formControlName="documentType"
                     class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300">
-                    <option value="">Kategorie auswählen...</option>
-                    @for (cat of categories; track cat.label) {
-                    <option [value]="cat.label">{{ cat.label }}</option>
+                    <option value="">Dokumenttyp auswählen...</option>
+                    @for (documentType of documentTypes; track documentType.value) {
+                    <option [value]="documentType.value">{{ documentType.label }}</option>
                     }
                 </select>
             </div>

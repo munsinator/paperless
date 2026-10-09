@@ -4,6 +4,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DocumentService, UploadDocumentRequest } from '../../services/document.service';
+import { DocumentType } from '../../models/document.model';
 
 @Component({
     selector: 'app-upload',
@@ -24,22 +25,21 @@ export class UploadComponent {
     readonly errorMessage = signal<string>('');
     readonly successMessage = signal<string>('');
 
-    readonly categories = [
-        { label: 'Rechnung', type: 'RECEIPT' },
-        { label: 'Quittung', type: 'RECEIPT' },
-        { label: 'Mietvertrag', type: 'CONTRACT' },
-        { label: 'Arbeitsvertrag', type: 'CONTRACT' },
-        { label: 'Versicherung', type: 'OTHER' },
-        { label: 'Steuerunterlagen', type: 'OTHER' },
-        { label: 'Bank / Finanzen', type: 'BANK_STATEMENT' },
-        { label: 'Sonstiges', type: 'OTHER' }
-    ] as const;
+    readonly documentTypes: { label: string; value: DocumentType }[] = [
+        { label: 'Rechnung', value: 'RECEIPT' },
+        { label: 'Vertrag', value: 'CONTRACT' },
+        { label: 'Bank / Finanzen', value: 'BANK_STATEMENT' },
+        { label: 'Zertifikat', value: 'CERTIFICATE' },
+        { label: 'Notiz', value: 'NOTE' },
+        { label: 'Reisepass', value: 'PASSPORT' },
+        { label: 'Sonstiges', value: 'OTHER' }
+    ];
 
     private readonly fb = new FormBuilder();
     private readonly tagsValidator: ValidatorFn = control => this.validateTags(String(control.value));
     readonly uploadForm = this.fb.nonNullable.group({
         title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
-        category: [''],
+        documentType: [''],
         tags: ['', [this.tagsValidator]]
     });
     private readonly formStatus = toSignal(this.uploadForm.statusChanges, {
@@ -142,10 +142,10 @@ export class UploadComponent {
 
         const formValues = this.uploadForm.getRawValue();
         const title = formValues.title.trim();
-        const category = this.categories.find(item => item.label === formValues.category);
+        const documentType = this.documentTypes.find(item => item.value === formValues.documentType)?.value;
         const request: UploadDocumentRequest = {
             title,
-            type: category?.type,
+            type: documentType,
             tags: this.normalizeTags(formValues.tags)
         };
 

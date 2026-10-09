@@ -10,6 +10,8 @@ public interface DocumentService {
 
     Document save(Document document, DocumentTypeEnum type);
 
+    Document update(UUID documentId, Document document, DocumentTypeEnum type);
+
     void delete(UUID documentId);
 
     List<Document> findAllDocuments(String query);

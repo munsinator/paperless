@@ -8,7 +8,7 @@ let mockDocuments: Document[] = [
     {
         id: 'doc-001',
         title: 'Mietvertrag_Wohnung_2026.pdf',
-        category: 'Mietvertrag',
+        documentType: 'CONTRACT',
         createdAt: '2026-10-01T10:00:00Z',
         tags: ['Wohnen', 'Vertrag'],
         summary: 'Mietvertrag für die Wohnung ab 01.10.2026.',
@@ -17,7 +17,7 @@ let mockDocuments: Document[] = [
     {
         id: 'doc-002',
         title: 'Stromrechnung_Q3_2026.pdf',
-        category: 'Rechnung',
+        documentType: 'RECEIPT',
         createdAt: '2026-09-28T14:30:00Z',
         tags: ['Finanzen', 'Rechnung'],
         summary: 'Stromrechnung für Q3 2026 über 142,50 €.',
@@ -56,12 +56,13 @@ export const fakeBackendInterceptor: HttpInterceptorFn = (req, next) => {
 
     // POST /api/document
     if (url === documentsUrl && method === 'POST') {
-        const documentBody = body as { title: string; type?: string };
+        const documentBody = body as { title: string; type?: Document['documentType']; tags?: string[] };
         const document: Document = {
             id: `doc-${Date.now()}`,
             title: documentBody.title,
-            category: documentBody.type,
-            createdAt: new Date().toISOString()
+            documentType: documentBody.type,
+            createdAt: new Date().toISOString(),
+            tags: documentBody.tags ?? []
         };
         mockDocuments = [document, ...mockDocuments];
         return of(new HttpResponse({ status: 201, body: document })).pipe(delay(400));

@@ -4,7 +4,7 @@ import { DatePipe } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
-import { Document } from '../../models/document.model';
+import { Document, DocumentType } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
 import { DomSanitizer } from '@angular/platform-browser';
 
@@ -39,14 +39,15 @@ export class DocumentDetailComponent {
     readonly isDeleting = signal<boolean>(false);
     readonly saveSuccess = signal<boolean>(false);
 
-    readonly categories = signal<string[]>([
-        'Mietvertrag',
-        'Rechnung',
-        'Bank / Finanzen',
-        'Versicherung',
-        'Arbeit',
-        'Sonstiges'
-    ]);
+    readonly documentTypes: { label: string; value: DocumentType }[] = [
+        { label: 'Rechnung', value: 'RECEIPT' },
+        { label: 'Vertrag', value: 'CONTRACT' },
+        { label: 'Bank / Finanzen', value: 'BANK_STATEMENT' },
+        { label: 'Zertifikat', value: 'CERTIFICATE' },
+        { label: 'Notiz', value: 'NOTE' },
+        { label: 'Reisepass', value: 'PASSPORT' },
+        { label: 'Sonstiges', value: 'OTHER' }
+    ];
 
     readonly safeFileUrl = computed(() => {
         const url = this.document()?.fileUrl;
@@ -55,7 +56,7 @@ export class DocumentDetailComponent {
 
     readonly editForm = this.fb.nonNullable.group({
         title: ['', [Validators.required]],
-        category: [''],
+        documentType: [''],
         tags: ['']
     });
 
@@ -65,7 +66,7 @@ export class DocumentDetailComponent {
             if (doc) {
                 this.editForm.patchValue({
                     title: doc.title,
-                    category: doc.category ?? '',
+                    documentType: doc.documentType ?? '',
                     tags: doc.tags ? doc.tags.join(', ') : ''
                 });
             }
@@ -89,7 +90,7 @@ export class DocumentDetailComponent {
 
         const updatedData: Partial<Document> = {
             title: formValues.title,
-            category: formValues.category || undefined,
+            documentType: this.documentTypes.find(item => item.value === formValues.documentType)?.value,
             tags: tagsArray
         };
 
