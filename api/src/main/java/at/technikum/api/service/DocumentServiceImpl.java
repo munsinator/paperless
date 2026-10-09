@@ -55,7 +55,7 @@ public class DocumentServiceImpl implements DocumentService {
         if (query == null || query.isBlank()) {
             return documentRepository.findAll();
         }
-        return documentRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(query, query);
+        return documentRepository.findByTitleContainingIgnoreCaseOrOcrTextContainingIgnoreCase(query, query);
     }
 
     @Override
