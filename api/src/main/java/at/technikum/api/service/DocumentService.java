@@ -12,7 +12,7 @@ public interface DocumentService {
 
     void delete(UUID documentId);
 
-    List<Document> findAllDocuments();
+    List<Document> findAllDocuments(String query);
 
     Document findDocumentById(UUID documentId);
 }

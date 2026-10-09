@@ -47,11 +47,13 @@ public class DocumentServiceImpl implements DocumentService {
         documentRepository.deleteById(documentId);
     }
 
-    // TODO here later search as attribute
     @Override
     @Transactional(readOnly = true)
-    public List<Document> findAllDocuments() {
-        return documentRepository.findAll();
+    public List<Document> findAllDocuments(String query) {
+        if (query == null || query.isBlank()) {
+            return documentRepository.findAll();
+        }
+        return documentRepository.findByTitleContainingIgnoreCaseOrContentContainingIgnoreCase(query, query);
     }
 
     @Override

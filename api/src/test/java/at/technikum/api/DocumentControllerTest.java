@@ -28,11 +28,22 @@ class DocumentControllerTests {
 
     @Test
     void get_documents_returns_empty_list() throws Exception {
-        when(documentService.findAllDocuments()).thenReturn(List.of());
+        when(documentService.findAllDocuments(null)).thenReturn(List.of());
 
         mockMvc.perform(get("/document"))
                 .andExpect(status().isOk())
                 .andExpect(content().json("[]"));
+    }
+
+    @Test
+    void get_documents_passes_search_query_to_service() throws Exception {
+        when(documentService.findAllDocuments("invoice")).thenReturn(List.of());
+
+        mockMvc.perform(get("/document").param("query", "invoice"))
+                .andExpect(status().isOk())
+                .andExpect(content().json("[]"));
+
+        verify(documentService).findAllDocuments("invoice");
     }
 
     @Test

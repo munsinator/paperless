@@ -1,0 +1,1757 @@
+﻿=== DATEI: \api\.mvn\wrapper\maven-wrapper.properties ===
+wrapperVersion=3.3.4
+distributionType=only-script
+distributionUrl=https://repo.maven.apache.org/maven2/org/apache/maven/apache-maven/3.9.16/apache-maven-3.9.16-bin.zip
+
+=== DATEI: \api\src\main\java\at\technikum\api\controller\DocumentController.java ===
+package at.technikum.api.controller;
+
+import at.technikum.api.dto.request.RequestDocumentDTO;
+import at.technikum.api.dto.response.ResponseDocumentDTO;
+import at.technikum.api.mapper.DocumentMapper;
+import at.technikum.api.service.DocumentService;
+import at.technikum.api.service.DocumentServiceImpl;
+import at.technikum.api.entity.Document;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/document")
+//@CrossOrigin(origins = "http://localhost:4200")
+public class DocumentController {
+
+    //private static final Logger logger = LoggerFactory.getLogger(GlobalTourLogController.class);
+    public final DocumentService documentService;
+    public final DocumentMapper mapper;
+
+    DocumentController(DocumentService documentService, DocumentMapper mapper) {
+        this.documentService = documentService;
+        this.mapper = mapper;
+    }
+
+    @PostMapping
+    public ResponseEntity<ResponseDocumentDTO> create(@Valid @RequestBody RequestDocumentDTO requestDocumentDTO) {
+        Document entityToSave = mapper.dtoToEntity(requestDocumentDTO);
+        Document savedEntity = documentService.save(entityToSave, requestDocumentDTO.getCategory());
+        return new ResponseEntity<>(mapper.entityToDto(savedEntity), HttpStatus.CREATED);
+    }
+
+    @GetMapping
+    public ResponseEntity<List<ResponseDocumentDTO>> findAll() {
+        List<ResponseDocumentDTO> documents = documentService.findAllDocuments().stream()
+                .map(mapper::entityToDto)
+                .toList();
+
+        return ResponseEntity.ok(documents);
+    }
+
+    @GetMapping("/{documentId}")
+    public ResponseEntity<ResponseDocumentDTO> findById(@PathVariable UUID documentId) {
+        Document document = documentService.findDocumentById(documentId);
+        return ResponseEntity.ok(mapper.entityToDto(document));
+    }
+
+    @DeleteMapping("/{documentId}")
+    public ResponseEntity<Void> delete(@PathVariable UUID documentId) {
+        documentService.delete(documentId);
+        return ResponseEntity.noContent().build(); // TODO check if HTTP 204 No Content needed, or data from the document is displayed after deleting
+    }
+
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\controller\UserController.java ===
+package at.technikum.api.controller;
+
+import at.technikum.api.dto.AuthDTO;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping("/users")
+@RequiredArgsConstructor
+public class UserController {
+
+    @PostMapping("/register")
+    public ResponseEntity<String> register(@Valid @RequestBody AuthDTO dto) {
+        // TODO implement logic
+        return new ResponseEntity<>("User successfully registered!", HttpStatus.CREATED);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<?> login(@Valid @RequestBody AuthDTO dto) {
+        // TODO implement logic
+        return new ResponseEntity<>("User successfully logged in!", HttpStatus.OK);
+    }
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\dto\request\RequestDocumentDTO.java ===
+package at.technikum.api.dto.request;
+
+import jakarta.validation.constraints.NotBlank;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.List;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class RequestDocumentDTO {
+
+    @NotBlank(message = "Title cannot be empty")
+    private String title;
+
+    private String category;
+    private List<String> tags;
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\dto\response\ResponseDocumentDTO.java ===
+package at.technikum.api.dto.response;
+
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
+import java.util.List;
+import java.util.UUID;
+
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class ResponseDocumentDTO {
+
+    private UUID id;
+    private String title;
+    private String category;
+    private LocalDate createdAt;
+    private List<String> tags;
+    private String summary;
+    private String ocrText;
+    private String fileUrl;
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\dto\AuthDTO.java ===
+package at.technikum.api.dto;
+
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
+import lombok.Data;
+
+@Data
+public class AuthDTO {
+
+    @NotBlank(message = "Username cannot be empty")
+    @Size(min = 3, max = 20, message = "Username must be between 3 and 20 characters long")
+    private String username;
+
+    @NotBlank(message = "Password cannot be empty")
+    @Size(min = 8, message = "Password must be at least 8 characters long")
+    private String password;
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\entity\Category.java ===
+package at.technikum.api.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.UUID;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Category {
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    @Column(unique = true, nullable = false)
+    private String name;
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\entity\Document.java ===
+package at.technikum.api.entity;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.util.UUID;
+import java.util.List;
+
+@Entity
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class Document {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    private UUID id;
+
+    private String title;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private Category category;
+
+    @Column(columnDefinition = "TEXT")
+    private String ocrText;
+
+    @Column(columnDefinition = "TEXT")
+    private String summary;
+
+    private String fileUrl;
+    private LocalDate createdAt;
+
+    @ElementCollection
+    @CollectionTable(name = "document_tags", joinColumns = @JoinColumn(name = "document_id"))
+    @Column(name = "tag")
+    private List<String> tags;
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\mapper\DocumentMapper.java ===
+package at.technikum.api.mapper;
+
+import at.technikum.api.dto.request.RequestDocumentDTO;
+import at.technikum.api.dto.response.ResponseDocumentDTO;
+import at.technikum.api.entity.Document;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+@Mapper(componentModel = "spring")
+public interface DocumentMapper {
+
+    // Entity -> ResponseDTO (Kategorie-Name aus dem Category-Objekt lesen)
+    @Mapping(target = "category", source = "category.name")
+    ResponseDocumentDTO entityToDto(Document entity);
+
+    // RequestDTO -> Entity (Category wird im Service gesetzt)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    @Mapping(target = "category", ignore = true)
+    Document dtoToEntity(RequestDocumentDTO dto);
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\repository\CategoryRepository.java ===
+package at.technikum.api.repository;
+
+import at.technikum.api.entity.Category;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+import java.util.UUID;
+
+@Repository
+public interface CategoryRepository extends JpaRepository<Category, UUID> {
+    Optional<Category> findByName(String name);
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\repository\DocumentRepository.java ===
+package at.technikum.api.repository;
+
+import at.technikum.api.entity.Document;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.UUID;
+
+@Repository
+public interface DocumentRepository extends JpaRepository<Document, UUID> {
+
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\service\DocumentService.java ===
+package at.technikum.api.service;
+
+import at.technikum.api.entity.Document;
+
+import java.util.List;
+import java.util.UUID;
+
+public interface DocumentService {
+
+    Document save(Document document, String categoryName);
+
+    void delete(UUID documentId);
+
+    List<Document> findAllDocuments();
+
+    Document findDocumentById(UUID documentId);
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\service\DocumentServiceImpl.java ===
+package at.technikum.api.service;
+
+import at.technikum.api.entity.Document;
+import at.technikum.api.repository.DocumentRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.UUID;
+
+@Service
+@RequiredArgsConstructor
+public class DocumentServiceImpl implements DocumentService {
+
+    private final DocumentRepository documentRepository;
+    // TODO check if mapping has to happen in controller or service
+    // private final DocumentMapper mapper;
+
+    @Override
+    @Transactional
+    public Document save(Document document, String categoryName) {
+        document.setCreatedAt(LocalDate.now());
+
+        // Kategorie aus den DB-Stammdaten suchen & zuweisen
+        if (categoryName != null && !categoryName.isBlank()) {
+            Category category = categoryRepository.findByName(categoryName)
+                    .orElseThrow(() -> new IllegalArgumentException("Kategorie nicht gefunden: " + categoryName));
+            document.setCategory(category);
+        }
+
+        return documentRepository.save(document);
+    }
+
+    @Override
+    @Transactional
+    public void delete(UUID documentId) {
+        if(!documentRepository.existsById(documentId)) {
+            throw new RuntimeException("Document not found with ID: " + documentId);
+        }
+        documentRepository.deleteById(documentId);
+    }
+
+    // TODO here later search as attribute
+    @Override
+    @Transactional(readOnly = true)
+    public List<Document> findAllDocuments() {
+        return documentRepository.findAll();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Document findDocumentById(UUID documentId) {
+        return documentRepository.findById(documentId)
+                .orElseThrow(() -> new RuntimeException("Document not found with ID: " + documentId));
+    }
+}
+
+=== DATEI: \api\src\main\java\at\technikum\api\ApiApplication.java ===
+package at.technikum.api;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+@SpringBootApplication
+public class ApiApplication {
+
+    public static void main(String[] args) {
+        SpringApplication.run(ApiApplication.class, args);
+    }
+
+}
+
+=== DATEI: \api\src\main\resources\application.properties ===
+spring.application.name=api
+
+spring.datasource.url=jdbc:postgresql://localhost:5434/paperless
+spring.datasource.username=paperless
+spring.datasource.password=paperless_password
+
+spring.jpa.hibernate.ddl-auto=update
+spring.jpa.show-sql=true
+
+=== DATEI: \api\src\test\java\at\technikum\api\ApiApplicationTests.java ===
+package at.technikum.api;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
+
+@SpringBootTest
+class ApiApplicationTests {
+
+    @Test
+    void contextLoads() {
+    }
+
+}
+
+=== DATEI: \api\pom.xml ===
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <parent>
+        <groupId>org.springframework.boot</groupId>
+        <artifactId>spring-boot-starter-parent</artifactId>
+        <version>4.1.1</version>
+        <relativePath/> <!-- lookup parent from repository -->
+    </parent>
+    <groupId>at.technikum</groupId>
+    <artifactId>api</artifactId>
+    <version>0.0.1-SNAPSHOT</version>
+    <name>api</name>
+    <description>api</description>
+    <url/>
+    <licenses>
+        <license/>
+    </licenses>
+    <developers>
+        <developer/>
+    </developers>
+    <scm>
+        <connection/>
+        <developerConnection/>
+        <tag/>
+        <url/>
+    </scm>
+    <properties>
+        <java.version>25</java.version>
+    </properties>
+    <dependencies>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-jpa-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-webmvc-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- Treiber -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- Mapstruct -->
+        <dependency>
+            <groupId>org.mapstruct</groupId>
+            <artifactId>mapstruct</artifactId>
+            <version>1.5.5.Final</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.8.5</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-validation</artifactId>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                        <!-- Bindung zwischen Lombok und MapStruct -->
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok-mapstruct-binding</artifactId>
+                            <version>0.2.0</version>
+                        </path>
+                        <path>
+                            <groupId>org.mapstruct</groupId>
+                            <artifactId>mapstruct-processor</artifactId>
+                            <version>1.6.3</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <excludes>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
+                    </excludes>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+</project>
+
+=== DATEI: \frontend\src\app\app.config.ts ===
+import { ApplicationConfig, provideBrowserGlobalErrorListeners } from '@angular/core';
+import { provideRouter } from '@angular/router';
+
+import { routes } from './app.routes';
+
+export const appConfig: ApplicationConfig = {
+  providers: [
+    provideBrowserGlobalErrorListeners(),
+    provideRouter(routes)
+  ]
+};
+
+=== DATEI: \frontend\src\app\app.css ===
+
+=== DATEI: \frontend\src\app\app.html ===
+<app-navbar></app-navbar>
+<main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+  <router-outlet></router-outlet>
+</main>
+
+=== DATEI: \frontend\src\app\app.routes.ts ===
+import { Routes } from '@angular/router';
+import { DashboardComponent } from '../pages/dashboard/dashboard.component';
+import { DocumentDetailComponent } from '../pages/document-detail/document-detail.component';
+import { AuthComponent } from '../pages/auth/auth.component';
+import { UploadComponent } from '../pages/upload/upload.component';
+
+export const routes: Routes = [
+    { path: '', redirectTo: 'dashboard', pathMatch: 'full'},
+
+    { path: 'dashboard', component: DashboardComponent},
+    { path: 'upload', component: UploadComponent},
+    { path: 'document/:id', component: DocumentDetailComponent},
+    { path: 'auth', component: AuthComponent},
+
+    { path: '**', redirectTo: 'dashboard'}
+];
+
+=== DATEI: \frontend\src\app\app.ts ===
+import { Component, signal } from '@angular/core';
+import { RouterOutlet } from '@angular/router';
+import { NavbarComponent } from '../components/navbar/navbar.component';
+
+@Component({
+  selector: 'app-root',
+  imports: [RouterOutlet, NavbarComponent],
+  templateUrl: './app.html',
+  styleUrl: './app.css'
+})
+export class App {
+  protected readonly title = signal('frontend');
+}
+
+=== DATEI: \frontend\src\components\document-card\document-card.component.css ===
+
+=== DATEI: \frontend\src\components\document-card\document-card.component.html ===
+<div class="w-full bg-white border border-slate-200 rounded-md p-4 flex flex-col gap-3">
+    <!-- Titel & Kategorie -->
+    <div class="w-full flex items-start justify-between gap-2">
+        <a [routerLink]="['/document', document().id]"
+            class="font-medium text-slate-800 hover:text-slate-600 text-sm block break-words">
+            {{ document().title }}
+        </a>
+        @if (document().category) {
+        <span
+            class="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-medium bg-slate-100 text-slate-600 border border-slate-200 shrink-0">
+            {{ document().category }}
+        </span>
+        }
+    </div>
+
+    <!-- Erstellungsdatum -->
+    <div class="w-full text-xs text-slate-400">
+        Erstellt: {{ document().createdAt | date:'dd.MM.yyyy' }}
+    </div>
+
+    <!-- Tags -->
+    @if (document().tags?.length) {
+    <div class="w-full flex flex-row flex-wrap gap-1.5">
+        @for (tag of document().tags; track tag) {
+        <span class="border border-slate-200 text-slate-600 text-xs px-2 py-0.5 rounded">
+            #{{ tag }}
+        </span>
+        }
+    </div>
+    }
+
+    <!-- Aktions-Buttons & Link -->
+    <div class="flex items-center justify-between pt-2 border-t border-slate-100 mt-1">
+        <div class="flex items-center gap-1.5">
+            <button type="button" (click)="openEditModal()" title="Dokument bearbeiten"
+                class="border border-slate-200 hover:bg-slate-100 text-slate-600 text-xs px-2.5 py-1.5 rounded transition-colors inline-flex items-center gap-1 font-medium cursor-pointer">
+                Bearbeiten
+            </button>
+            <button type="button" (click)="onDelete()" title="Dokument lÃ¶schen"
+                class="border border-red-200 hover:bg-red-50 text-red-600 text-xs px-2.5 py-1.5 rounded transition-colors inline-flex items-center gap-1 font-medium cursor-pointer">
+                LÃ¶schen
+            </button>
+        </div>
+
+        <a [routerLink]="['/document', document().id]"
+            class="bg-slate-800 hover:bg-slate-700 text-white text-xs px-3 py-1.5 rounded transition-colors inline-flex items-center gap-1 font-medium">
+            Details anzeigen â†’
+        </a>
+    </div>
+</div>
+
+<!-- Modal Dialog zum Bearbeiten der Metadaten -->
+@if (isEditModalOpen()) {
+<app-edit-document-modal [document]="document()" (save)="onSaveEdit($event)" (close)="closeEditModal()">
+</app-edit-document-modal>
+}
+
+=== DATEI: \frontend\src\components\document-card\document-card.component.ts ===
+import { Component, input, output, signal } from '@angular/core';
+import { DatePipe } from '@angular/common';
+import { RouterLink } from '@angular/router';
+import { Document } from '../../models/document.model';
+import { EditDocumentModalComponent } from '../edit-document-modal/edit-document-modal.component';
+
+@Component({
+    selector: 'app-document-card',
+    standalone: true,
+    imports: [RouterLink, DatePipe, EditDocumentModalComponent],
+    templateUrl: './document-card.component.html'
+})
+export class DocumentCardComponent {
+    readonly document = input.required<Document>();
+
+    // State fÃ¼r das Edit-Modal
+    readonly isEditModalOpen = signal(false);
+
+    // Output Events
+    readonly delete = output<string>();
+    readonly update = output<{ id: string; data: Partial<Document> }>();
+
+    openEditModal(): void {
+        this.isEditModalOpen.set(true);
+    }
+
+    closeEditModal(): void {
+        this.isEditModalOpen.set(false);
+    }
+
+    onSaveEdit(updatedData: Partial<Document>): void {
+        this.update.emit({
+            id: this.document().id,
+            data: updatedData
+        });
+        this.closeEditModal();
+    }
+
+    onDelete(): void {
+        this.delete.emit(this.document().id);
+    }
+}
+
+=== DATEI: \frontend\src\components\edit-document-modal\edit-document-modal.component.html ===
+<!-- Modal Backdrop -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+
+    <!-- Modal Dialog -->
+    <div class="bg-white border border-slate-200 rounded-lg shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+
+        <!-- Modal Header -->
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-slate-800">Dokument-Metadaten bearbeiten</h2>
+            <button type="button" (click)="onClose()" class="text-slate-400 hover:text-slate-600 p-1 text-base">
+                âœ•
+            </button>
+        </div>
+
+        <!-- Modal Body / Form -->
+        <form [formGroup]="editForm" (ngSubmit)="onSave()" class="p-5 space-y-4">
+
+            <!-- Titel -->
+            <div class="space-y-1">
+                <label for="edit-title" class="block text-xs font-medium text-slate-700">
+                    Titel / Name <span class="text-slate-400">*</span>
+                </label>
+                <input id="edit-title" type="text" formControlName="title" placeholder="z. B. Mietvertrag_2026.pdf"
+                    class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+            </div>
+
+            <!-- Kategorie -->
+            <div class="space-y-1">
+                <label for="edit-category" class="block text-xs font-medium text-slate-700">Kategorie</label>
+                <select id="edit-category" formControlName="category"
+                    class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300">
+                    <option value="">Keine Kategorie</option>
+                    @for (cat of categories(); track cat) {
+                    <option [value]="cat">{{ cat }}</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Tags -->
+            <div class="space-y-1">
+                <label for="edit-tags" class="block text-xs font-medium text-slate-700">Tags (mit Komma trennen)</label>
+                <input id="edit-tags" type="text" formControlName="tags" placeholder="Rechnung, VertrÃ¤ge, 2026"
+                    class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+            </div>
+
+            <!-- Modal Footer / Buttons -->
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button type="button" (click)="onClose()"
+                    class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs rounded font-medium transition-colors">
+                    Abbrechen
+                </button>
+                <button type="submit" [disabled]="editForm.invalid"
+                    class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-xs rounded font-medium transition-colors">
+                    Speichern
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>
+
+=== DATEI: \frontend\src\components\edit-document-modal\edit-document-modal.component.ts ===
+import { Component, input, output, OnInit, inject } from '@angular/core';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Document } from '../../models/document.model';
+
+@Component({
+    selector: 'app-edit-document-modal',
+    standalone: true,
+    imports: [ReactiveFormsModule],
+    templateUrl: './edit-document-modal.component.html'
+})
+export class EditDocumentModalComponent implements OnInit {
+    private readonly fb = inject(FormBuilder);
+
+    // Inputs & Outputs
+    readonly document = input.required<Document>();
+    readonly categories = input<string[]>(['Rechnung', 'Vertrag', 'Wohnen', 'Finanzen', 'Arbeit', 'Gesundheit', 'Versicherung']);
+
+    readonly save = output<Partial<Document>>();
+    readonly close = output<void>();
+
+    // Formular-Definition
+    readonly editForm = this.fb.nonNullable.group({
+        title: ['', [Validators.required]],
+        category: [''],
+        tags: ['']
+    });
+
+    ngOnInit(): void {
+        const doc = this.document();
+        this.editForm.patchValue({
+            title: doc.title,
+            category: doc.category || '',
+            tags: doc.tags ? doc.tags.join(', ') : ''
+        });
+    }
+
+    onSave(): void {
+        if (this.editForm.invalid) return;
+
+        const formValues = this.editForm.getRawValue();
+
+        // Tags-String in Array umwandeln & Trimmen
+        const tagsArray = formValues.tags
+            .split(',')
+            .map(tag => tag.trim())
+            .filter(tag => tag.length > 0);
+
+        const updatedData: Partial<Document> = {
+            title: formValues.title,
+            category: formValues.category || undefined,
+            tags: tagsArray
+        };
+
+        this.save.emit(updatedData);
+    }
+
+    onClose(): void {
+        this.close.emit();
+    }
+}
+
+=== DATEI: \frontend\src\components\navbar\navbar.component.css ===
+
+=== DATEI: \frontend\src\components\navbar\navbar.component.html ===
+<nav class="block w-full px-4 py-2 bg-white bg-opacity-90 sticky top-0 shadow lg:px-8 lg:py-3 backdrop-blur-lg backdrop-saturate-150 z-[9999]"> 
+  <div class="container flex flex-wrap items-center justify-between mx-auto text-slate-800"> 
+    <a href="#" class="mr-4 block cursor-pointer py-1.5 text-base text-slate-800 font-semibold"> 
+      paperless 
+    </a> 
+    
+    <!-- Desktop -->
+    <div class="hidden lg:block"> 
+      <ul class="flex flex-col gap-2 mt-2 mb-4 lg:mb-0 lg:mt-0 lg:flex-row lg:items-center lg:gap-6"> 
+        <li class="flex items-center p-1 text-sm gap-x-2 text-slate-600 hover:font-bold transition-all"> 
+          <a routerLink="/dashboard">Dashboard</a> 
+        </li> 
+        <li class="flex items-center p-1 text-sm gap-x-2 text-slate-600 hover:font-bold transition-all"> 
+          <a routerLink="/upload">Upload</a> </li> 
+        <li class="flex items-center p-1 text-sm gap-x-2 text-slate-600 hover:font-bold transition-all"> 
+          <a routerLink="/auth">Login</a> 
+        </li> 
+      </ul> 
+    </div>
+
+    <!-- BurgermenÃ¼-Button -->
+    <button 
+      (click)="toggleMenu()"
+      class="relative ml-auto h-6 max-h-[40px] w-6 max-w-[40px] select-none rounded-lg text-center align-middle text-xs font-medium uppercase text-inherit transition-all hover:bg-transparent focus:bg-transparent active:bg-transparent disabled:pointer-events-none disabled:opacity-50 disabled:shadow-none lg:hidden" 
+      type="button"> 
+      <span class="absolute transform -translate-x-1/2 -translate-y-1/2 top-1/2 left-1/2"> 
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2"> 
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"></path> 
+        </svg> 
+      </span> 
+    </button> 
+  </div>
+
+  <!-- Mobile Ansicht -->
+  @if (isMenuOpen) {
+    <div class="block lg:hidden mt-2 pt-2 border-t border-slate-200">
+      <ul class="flex flex-col gap-2 pb-2">
+        <li class="p-1 text-sm text-slate-600 hover:font-bold">
+          <a routerLink="/dashboard" (click)="isMenuOpen = false">Dashboard</a>
+        </li>
+        <li class="p-1 text-sm text-slate-600 hover:font-bold">
+          <a routerLink="/upload" (click)="isMenuOpen = false">Upload</a>
+        </li>
+        <li class="p-1 text-sm text-slate-600 hover:font-bold">
+          <a routerLink="/auth" (click)="isMenuOpen = false">Login</a>
+        </li>
+      </ul>
+    </div>
+  }
+</nav>
+
+=== DATEI: \frontend\src\components\navbar\navbar.component.ts ===
+import { Component } from "@angular/core";
+import { RouterLink, RouterLinkActive } from "@angular/router";
+
+@Component({
+    selector: 'app-navbar',
+    standalone: true,
+    imports: [RouterLink, RouterLinkActive],
+    templateUrl: './navbar.component.html',
+    styleUrl: './navbar.component.css'
+})
+
+export class NavbarComponent {
+    isMenuOpen = false;
+
+    toggleMenu() {
+        this.isMenuOpen = !this.isMenuOpen;
+    }
+}
+
+=== DATEI: \frontend\src\components\searchbar\searchbar.component.css ===
+
+=== DATEI: \frontend\src\components\searchbar\searchbar.component.html ===
+<div class="w-full max-w-md min-w-[200px] mx-auto">
+  <div class="relative flex items-center">
+    <input class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md pl-3 pr-32 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-300" placeholder="Dokument suchen..." />
+    <div class="absolute right-1 flex items-center gap-1">
+      <button class="flex items-center rounded p-1.5 border border-slate-200 text-slate-600 hover:bg-slate-100 focus:bg-slate-100 transition-all" type="button" title="Filter optionen">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4">
+          <path d="M6 3a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v2.586a1 1 0 0 1-.293.707L13.414 10.5V17a1 1 0 0 1-.553.894l-3 1.5A1 1 0 0 1 8.5 18.5V10.5L3.293 6.293A1 1 0 0 1 3 5.586V3Z" />
+        </svg>
+      </button>
+      <button class="flex items-center rounded bg-slate-800 py-1 px-2.5 border border-transparent text-center text-sm text-white transition-all hover:shadow focus:bg-slate-700 hover:bg-slate-700" type="button">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 mr-1.5">
+          <path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 0 13.5 6.75 6.75 0 0 0 0-13.5ZM2.25 10.5a8.25 8.25 0 1 1 14.59 5.28l4.69 4.69a.75.75 0 1 1-1.06 1.06l-4.69-4.69A8.25 8.25 0 0 1 2.25 10.5Z" clip-rule="evenodd" />
+        </svg>
+        Search
+      </button>
+    </div>
+  </div>
+</div>
+
+=== DATEI: \frontend\src\components\searchbar\searchbar.component.ts ===
+import { Component } from "@angular/core";
+import { RouterLink, RouterLinkActive } from "@angular/router";
+
+@Component({
+    selector: 'app-searchbar',
+    standalone: true,
+    imports: [RouterLink, RouterLinkActive],
+    templateUrl: './searchbar.component.html',
+    styleUrl: './searchbar.component.css'
+})
+
+export class SearchbarComponent {
+    
+}
+
+=== DATEI: \frontend\src\guards\auth.guard.ts ===
+
+=== DATEI: \frontend\src\interceptors\auth.interceptor.ts ===
+
+=== DATEI: \frontend\src\models\document.model.ts ===
+export interface Document {
+    id: string;
+    title: string;
+    category?: string;
+    createdAt: string;
+    tags?: string[];
+    summary?: string;
+    ocrText?: string;
+    fileUrl?: string;
+}
+
+=== DATEI: \frontend\src\models\user.model.ts ===
+
+=== DATEI: \frontend\src\pages\auth\auth.component.css ===
+
+=== DATEI: \frontend\src\pages\auth\auth.component.html ===
+<div class="w-full max-w-md mx-auto space-y-6">
+  <div class="bg-white border border-slate-200 rounded-md p-6 space-y-6">
+    
+    <div class="space-y-4">
+      <div class="text-center">
+        <h1 class="text-xl font-semibold text-slate-800">Willkommen!</h1>
+        <p class="text-xs text-slate-400 mt-1">Verwalten Sie Ihre Dokumente zentral an einem Ort</p>
+      </div>
+
+      <div role="tablist" aria-label="Authentifizierung" class="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-md text-xs font-medium text-slate-600">
+        <button 
+          type="button" 
+          role="tab"
+          [attr.aria-selected]="isLogin"
+          (click)="isLogin = true"
+          [ngClass]="isLogin ? 'bg-white text-slate-800 shadow-sm' : 'hover:text-slate-800'"
+          class="py-1.5 rounded transition-all text-center focus:outline-none focus:ring-2 focus:ring-slate-400">
+          Anmelden
+        </button>
+        <button 
+          type="button" 
+          role="tab"
+          [attr.aria-selected]="!isLogin"
+          (click)="isLogin = false"
+          [ngClass]="!isLogin ? 'bg-white text-slate-800 shadow-sm' : 'hover:text-slate-800'"
+          class="py-1.5 rounded transition-all text-center focus:outline-none focus:ring-2 focus:ring-slate-400">
+          Registrieren
+        </button>
+      </div>
+    </div>
+
+    @if (isLogin) {
+      <form (ngSubmit)="onLogin()" class="space-y-4">
+        <div class="space-y-1">
+          <label for="login-email" class="block text-xs font-medium text-slate-700">E-Mail-Adresse</label>
+          <input 
+            id="login-email" 
+            name="email"
+            type="email" 
+            autocomplete="username"
+            placeholder="name@example.com" 
+            class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 hover:border-slate-300" 
+            required 
+          />
+        </div>
+
+        <div class="space-y-1">
+          <label for="login-password" class="block text-xs font-medium text-slate-700">Passwort</label>
+          <input 
+            id="login-password" 
+            name="password"
+            type="password" 
+            autocomplete="current-password"
+            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" 
+            class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 hover:border-slate-300" 
+            required 
+          />
+        </div>
+
+        <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs py-2 px-4 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400">
+          Anmelden
+        </button>
+      </form>
+    } @else {
+      <form (ngSubmit)="onRegister()" class="space-y-4">
+        <div class="space-y-1">
+          <label for="register-username" class="block text-xs font-medium text-slate-700">Benutzername</label>
+          <input 
+            id="register-username" 
+            name="username"
+            type="text" 
+            autocomplete="username"
+            placeholder="maxmustermann" 
+            class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 hover:border-slate-300" 
+            required 
+          />
+        </div>
+
+        <div class="space-y-1">
+          <label for="register-email" class="block text-xs font-medium text-slate-700">E-Mail-Adresse</label>
+          <input 
+            id="register-email" 
+            name="email"
+            type="email" 
+            autocomplete="email"
+            placeholder="name@example.com" 
+            class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 hover:border-slate-300" 
+            required 
+          />
+        </div>
+
+        <div class="space-y-1">
+          <label for="register-password" class="block text-xs font-medium text-slate-700">Passwort</label>
+          <input 
+            id="register-password" 
+            name="password"
+            type="password" 
+            autocomplete="new-password"
+            placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢" 
+            class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 hover:border-slate-300" 
+            required 
+          />
+        </div>
+
+        <button type="submit" class="w-full bg-slate-800 hover:bg-slate-700 text-white text-xs py-2 px-4 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400">
+          Account erstellen
+        </button>
+      </form>
+    }
+
+  </div>
+</div>
+
+=== DATEI: \frontend\src\pages\auth\auth.component.ts ===
+import { Component } from '@angular/core';
+import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+
+@Component({
+  selector: 'app-auth',
+  standalone: true,
+  imports: [CommonModule, FormsModule],
+  templateUrl: './auth.component.html',
+  styleUrl: './auth.component.css'
+})
+export class AuthComponent {
+  // Wechsel zwischen Login und Registrierung
+  isLogin = true;
+
+  onLogin(): void {
+    // Hier spÃ¤ter Login Logik
+    console.log('Login abgesendet');
+  }
+
+  onRegister(): void {
+    // Hier spÃ¤ter Registrieren Logik
+    console.log('Registrierung abgesendet');
+  }
+}
+
+=== DATEI: \frontend\src\pages\dashboard\dashboard.component.css ===
+
+=== DATEI: \frontend\src\pages\dashboard\dashboard.component.html ===
+<div class="w-full flex flex-col items-center gap-6">
+
+    <div class="w-full">
+        <app-searchbar class="w-full block" />
+    </div>
+
+    <div class="w-full flex flex-col gap-4">
+        @for (doc of allDocuments(); track doc.id) {
+        <app-document-card [document]="doc" class="w-full block" />
+        } @empty {
+        <p class="text-gray-500 text-center">Keine Dokumente vorhanden.</p>
+        }
+    </div>
+
+</div>
+
+=== DATEI: \frontend\src\pages\dashboard\dashboard.component.ts ===
+import { Component, signal, computed, inject } from '@angular/core';
+import { SearchbarComponent } from '../../components/searchbar/searchbar.component';
+import { DocumentCardComponent } from '../../components/document-card/document-card.component';
+import { Document } from '../../models/document.model';
+import { DocumentService } from '../../services/document.service';
+import { toSignal } from '@angular/core/rxjs-interop';
+
+@Component({
+    selector: 'app-dashboard',
+    standalone: true,
+    imports: [DocumentCardComponent, SearchbarComponent],
+    templateUrl: './dashboard.component.html'
+})
+export class DashboardComponent {
+    private readonly documentService = inject(DocumentService);
+    readonly allDocuments = toSignal(this.documentService.getDocuments(), {
+        initialValue: []
+    });
+}
+
+=== DATEI: \frontend\src\pages\document-detail\document-detail.component.css ===
+
+=== DATEI: \frontend\src\pages\document-detail\document-detail.component.html ===
+<div class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+
+    <!-- Back Button -->
+    <div class="flex items-center justify-between">
+        <a routerLink="/dashboard"
+            class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            ZurÃ¼ck zum Dashboard
+        </a>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-2">
+            <button type="button" (click)="onDelete()" [disabled]="isDeleting()"
+                class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs px-3 py-1.5 rounded font-medium transition-colors disabled:opacity-50 cursor-pointer inline-flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+                @if (isDeleting()) { LÃ¶sche... } @else { Dokument lÃ¶schen }
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Grid: PDF Vorschau & Metadaten/AI Box -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LINKS: PDF Vorschau / Dokumenten-Viewer -->
+        <div
+            class="lg:col-span-7 bg-white border border-slate-200 rounded-md shadow-xs overflow-hidden flex flex-col min-h-[550px]">
+            <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-700 flex items-center gap-2">
+                    Dokumentenvorschau
+                </span>
+            </div>
+
+            <div class="flex-1 bg-slate-100 flex items-center justify-center p-4">
+                @if (document()?.fileUrl) {
+                <iframe [src]="document()?.fileUrl"
+                    class="w-full h-full min-h-[500px] rounded border border-slate-200 bg-white" title="PDF Vorschau">
+                </iframe>
+                } @else {
+                <!-- Fallback Visualisierung -->
+                <div class="text-center p-8 border-2 border-dashed border-slate-300 rounded-lg max-w-sm">
+                    <div
+                        class="w-12 h-14 bg-red-100 text-red-600 rounded-lg mx-auto flex items-center justify-center font-bold text-xs shadow-inner mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                    </div>
+                    <p class="text-xs font-medium text-slate-700">{{ document()?.title }}</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Vorschau wird geladen...</p>
+                </div>
+                }
+            </div>
+        </div>
+
+        <!-- RECHTS: Metadaten, AI-Zusammenfassung & OCR Text -->
+        <div class="lg:col-span-5 space-y-6">
+
+            <div class="bg-white border border-slate-200 rounded-md p-6 space-y-5 shadow-xs">
+
+                <!-- Tab Navigation -->
+                <div class="flex border-b border-slate-200">
+                    <button type="button" (click)="activeTab.set('metadata')"
+                        [class.border-slate-800]="activeTab() === 'metadata'"
+                        [class.text-slate-800]="activeTab() === 'metadata'"
+                        class="pb-2 px-3 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-colors cursor-pointer inline-flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m9-6h2.25m-2.25 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 12h8.25" />
+                        </svg>
+                        Metadaten
+                    </button>
+                    <button type="button" (click)="activeTab.set('ai')" [class.border-slate-800]="activeTab() === 'ai'"
+                        [class.text-slate-800]="activeTab() === 'ai'"
+                        class="pb-2 px-3 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-colors cursor-pointer inline-flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                        </svg>
+                        KI & OCR Text
+                    </button>
+                </div>
+
+                <!-- TAB 1: METADATEN FORMULAR -->
+                @if (activeTab() === 'metadata') {
+                <form [formGroup]="editForm" (ngSubmit)="onSave()" class="space-y-4">
+
+                    <!-- Titel -->
+                    <div class="space-y-1">
+                        <label for="detail-title" class="block text-xs font-medium text-slate-700">
+                            Titel / Name <span class="text-slate-400">*</span>
+                        </label>
+                        <input id="detail-title" type="text" formControlName="title"
+                            class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+                    </div>
+
+                    <!-- Kategorie -->
+                    <div class="space-y-1">
+                        <label for="detail-category" class="block text-xs font-medium text-slate-700">Kategorie</label>
+                        <select id="detail-category" formControlName="category"
+                            class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300">
+                            <option value="">Keine Kategorie</option>
+                            @for (cat of categories(); track cat) {
+                            <option [value]="cat">{{ cat }}</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Manuelle Tags -->
+                    <div class="space-y-1">
+                        <label for="detail-tags" class="block text-xs font-medium text-slate-700">Tags (mit Komma
+                            trennen)</label>
+                        <input id="detail-tags" type="text" formControlName="tags"
+                            placeholder="Rechnung, VertrÃ¤ge, 2026"
+                            class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+                    </div>
+
+                    <!-- Erstellungsinformationen & AutoTags -->
+                    <div class="p-3 bg-slate-50 border border-slate-100 rounded text-xs text-slate-500 space-y-1">
+                        <p><strong>Erstellt am:</strong> {{ document()?.createdAt | date:'dd.MM.yyyy HH:mm' }}</p>
+                    </div>
+
+                    <!-- Feedback Meldung -->
+                    @if (saveSuccess()) {
+                    <div
+                        class="p-2.5 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800 font-medium">
+                        Ã„nderungen erfolgreich gespeichert!
+                    </div>
+                    }
+
+                    <div class="pt-2 flex justify-end">
+                        <button type="submit" [disabled]="editForm.invalid || isSaving()"
+                            class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-xs px-4 py-2 rounded font-medium transition-colors cursor-pointer">
+                            @if (isSaving()) { Speichere... } @else { Ã„nderungen speichern }
+                        </button>
+                    </div>
+
+                </form>
+                }
+
+                <!-- TAB 2: KI ZUSAMMENFASSUNG & OCR TEXT -->
+                @if (activeTab() === 'ai') {
+                <div class="space-y-4">
+
+                    <!-- GenAI Zusammenfassung -->
+                    <div class="space-y-1.5">
+                        <h3 class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                            </svg>
+                            GenAI Zusammenfassung
+                        </h3>
+                        <div
+                            class="p-3 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-700 leading-relaxed">
+                            {{ document()?.summary || 'Keine Zusammenfassung vorhanden.' }}
+                        </div>
+                    </div>
+
+                    <!-- Extrahierter OCR Text -->
+                    <div class="space-y-1 pt-2">
+                        <label for="ocr-text" class="block text-xs font-medium text-slate-700">
+                            Extrahierter OCR Text
+                        </label>
+                        <textarea id="ocr-text" rows="6" readonly
+                            class="w-full bg-slate-50 text-slate-600 font-mono text-xs border border-slate-200 rounded-md p-2.5 focus:outline-none resize-none cursor-default">
+                {{ document()?.ocrText || 'Kein OCR Text verfÃ¼gbar.' }}
+              </textarea>
+                    </div>
+
+                </div>
+                }
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+=== DATEI: \frontend\src\pages\document-detail\document-detail.component.ts ===
+import { Component, inject, signal, OnInit } from '@angular/core';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { DatePipe } from '@angular/common';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Document } from '../../models/document.model';
+
+@Component({
+    selector: 'app-document-detail',
+    standalone: true,
+    imports: [RouterLink, DatePipe, ReactiveFormsModule],
+    templateUrl: './document-detail.component.html',
+    styleUrl: './document-detail.component.css'
+})
+export class DocumentDetailComponent implements OnInit {
+    private readonly route = inject(ActivatedRoute);
+    private readonly router = inject(Router);
+    private readonly fb = inject(FormBuilder);
+
+    // Component Signals
+    readonly documentId = signal<string>('');
+    readonly document = signal<(Document & { ocrText?: string; fileUrl?: string }) | null>(null);
+    readonly activeTab = signal<'metadata' | 'ai'>('metadata');
+    readonly isSaving = signal<boolean>(false);
+    readonly isDeleting = signal<boolean>(false);
+    readonly saveSuccess = signal<boolean>(false);
+
+    readonly categories = signal<string[]>([
+        'Mietvertrag', 'Rechnung', 'Bank / Finanzen', 'Versicherung', 'Arbeit', 'Sonstiges'
+    ]);
+
+    // Formular
+    readonly editForm = this.fb.nonNullable.group({
+        title: ['', [Validators.required]],
+        category: [''],
+        tags: ['']
+    });
+
+    // Hardcoded Fake-Datenbank zum Testen der Detailansicht
+    private readonly mockDocuments: Record<string, Document & { ocrText?: string; fileUrl?: string }> = {
+        'doc-001': {
+            id: 'doc-001',
+            title: 'Mietvertrag_Wohnung_2026.pdf',
+            category: 'Mietvertrag',
+            createdAt: '2026-10-01T10:00:00Z',
+            tags: ['Wohnen', 'Vertrag'],
+            summary: 'Dieser Mietvertrag regelt das MietverhÃ¤ltnis fÃ¼r die Wohnung ab dem 01.10.2026. Die monatliche Bruttomiete betrÃ¤gt 850,00 â‚¬ inkl. Betriebskosten. Die KÃ¼ndigungsfrist ist gesetzlich auf 3 Monate festgelegt.',
+            ocrText: 'MIETVERTRAG\nZwischen Vermieter Hausverwaltung GmbH und Mieter Max Mustermann...\nBruttomiete: 850,00 EUR\nKÃ¼ndigungsfrist: 3 Monate...'
+        },
+        'doc-002': {
+            id: 'doc-002',
+            title: 'Stromrechnung_Q3_2026.pdf',
+            category: 'Rechnung',
+            createdAt: '2026-09-28T14:30:00Z',
+            tags: ['Finanzen', 'Rechnung'],
+            summary: 'Quartalsabrechnung von Wien Energie fÃ¼r den Zeitraum Juli bis September 2026. Der offene Gesamtbetrag von 142,50 â‚¬ wird per SEPA-Lastschrift am 15.10.2026 eingezogen.',
+            ocrText: 'Wien Energie GmbH - Stromrechnung Q3/2026\nGesamtbetrag: 142,50 Euro\nZahlbar bis: 15.10.2026\nVielen Dank fÃ¼r Ihr Vertrauen.'
+        }
+    };
+
+    ngOnInit(): void {
+        const id = this.route.snapshot.paramMap.get('id');
+        if (id) {
+            this.documentId.set(id);
+            this.loadDocument(id);
+        }
+    }
+
+    private loadDocument(id: string): void {
+        const doc = this.mockDocuments[id] || {
+            id,
+            title: `Dokument_${id}.pdf`,
+            category: 'Sonstiges',
+            createdAt: new Date().toISOString(),
+            tags: ['Test'],
+            autoTags: ['OCR-Ready'],
+            summaryShortcuts: ['Keine spezifischen Highlights verfÃ¼gbar'],
+            summary: 'Automatisch generierte Zusammenfassung fÃ¼r das ausgewÃ¤hlte Dokument.',
+            ocrText: 'Beispielhafter OCR-Text fÃ¼r ein neu ausgewÃ¤hltes Dokument...'
+        };
+
+        this.document.set(doc);
+
+        this.editForm.patchValue({
+            title: doc.title,
+            category: doc.category || '',
+            tags: doc.tags ? doc.tags.join(', ') : ''
+        });
+    }
+
+    onSave(): void {
+        if (this.editForm.invalid) return;
+
+        this.isSaving.set(true);
+        this.saveSuccess.set(false);
+
+        const formValues = this.editForm.getRawValue();
+        const tagsArray = formValues.tags
+            .split(',')
+            .map(t => t.trim())
+            .filter(t => t.length > 0);
+
+        setTimeout(() => {
+            if (this.document()) {
+                this.document.set({
+                    ...this.document()!,
+                    title: formValues.title,
+                    category: formValues.category || undefined,
+                    tags: tagsArray
+                });
+            }
+            this.isSaving.set(false);
+            this.saveSuccess.set(true);
+
+            setTimeout(() => this.saveSuccess.set(false), 3000);
+        }, 500);
+    }
+
+    onDelete(): void {
+        if (confirm('MÃ¶chtest du dieses Dokument wirklich unwiderruflich lÃ¶schen?')) {
+            this.isDeleting.set(true);
+            setTimeout(() => {
+                this.isDeleting.set(false);
+                this.router.navigate(['/dashboard']);
+            }, 500);
+        }
+    }
+}
+
+=== DATEI: \frontend\src\pages\upload\upload.component.css ===
+
+=== DATEI: \frontend\src\pages\upload\upload.component.html ===
+<div class="w-full flex flex-col items-center gap-6">
+    <div class="w-full bg-white border border-slate-200 rounded-md p-6 space-y-6">
+
+        <!-- Header -->
+        <div class="text-center">
+            <h1 class="text-xl font-semibold text-slate-800">Dokument hochladen</h1>
+            <p class="text-xs text-slate-400 mt-1">Laden Sie Ihre PDF-Dateien fÃ¼r die automatische Verarbeitung hoch</p>
+        </div>
+
+        <form [formGroup]="uploadForm" (ngSubmit)="onUpload()" class="space-y-4">
+
+            <!-- Drag & Drop -->
+            <div class="space-y-1">
+                <label class="block text-xs font-medium text-slate-700">Dokument-Datei (PDF, max. 15MB)</label>
+
+                <div (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)"
+                    [class.bg-slate-50]="isDragging()"
+                    class="border-2 border-dashed border-slate-200 hover:border-slate-300 rounded-md p-6 text-center transition-colors cursor-pointer relative overflow-hidden">
+
+                    <input #fileInput type="file" id="file-input" accept=".pdf,application/pdf"
+                        (change)="onFileSelected($event)" [class.pointer-events-none]="selectedFile()"
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+
+                    @if (!selectedFile()) {
+                    <div class="flex flex-col items-center gap-2 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-slate-400" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                        </svg>
+                        <div class="text-xs text-slate-600 font-medium">
+                            Datei hierher ziehen oder <span class="text-slate-800 underline">durchsuchen</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400">Nur PDF-Dateien bis zu 15 MB</p>
+                    </div>
+                    } @else {
+                    <div class="flex items-center justify-between pointer-events-none">
+                        <div class="flex items-center gap-2 text-left min-w-0">
+                            <div
+                                class="w-8 h-8 border border-slate-200 text-slate-700 rounded flex items-center justify-center shrink-0 text-[10px] font-semibold">
+                                PDF
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-xs font-medium text-slate-800 truncate">{{ selectedFile()?.name }}</p>
+                                <p class="text-[10px] text-slate-400">{{ formattedFileSize() }}</p>
+                            </div>
+                        </div>
+
+                        <button type="button" (click)="removeFile(fileInput)"
+                            class="relative z-20 pointer-events-auto text-slate-400 hover:text-slate-600 p-2 text-xs font-semibold">
+                            âœ•
+                        </button>
+                    </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Titel -->
+            <div class="space-y-1">
+                <label for="doc-title" class="block text-xs font-medium text-slate-700">
+                    Titel / Name <span class="text-slate-400">*</span>
+                </label>
+                <input id="doc-title" type="text" formControlName="title" placeholder="z. B. Mietvertrag_2026.pdf"
+                    class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+            </div>
+
+            <!-- Kategorie Dropdown -->
+            <div class="space-y-1">
+                <label for="doc-category" class="block text-xs font-medium text-slate-700">Kategorie</label>
+                <select id="doc-category" formControlName="category"
+                    class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300">
+                    <option value="" disabled selected>Kategorie auswÃ¤hlen...</option>
+                    @for (cat of categories(); track cat) {
+                    <option [value]="cat">{{ cat }}</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Tags -->
+            <div class="space-y-1">
+                <label for="doc-tags" class="block text-xs font-medium text-slate-700">Tags (mit Komma trennen)</label>
+                <input id="doc-tags" type="text" formControlName="tags" placeholder="Rechnung, VertrÃ¤ge, 2026"
+                    class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+            </div>
+
+            <!-- Feedback Meldungen -->
+            @if (errorMessage()) {
+            <div
+                class="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs text-red-700 flex items-center justify-between">
+                <span>{{ errorMessage() }}</span>
+            </div>
+            }
+
+            @if (successMessage()) {
+            <div
+                class="p-2.5 bg-slate-100 border border-slate-200 rounded-md text-xs text-slate-800 font-medium flex items-center justify-between">
+                <span>{{ successMessage() }}</span>
+            </div>
+            }
+
+            @if (isUploading()) {
+            <div class="space-y-1">
+                <div class="flex justify-between text-[10px] text-slate-500">
+                    <span>Wird verarbeitet...</span>
+                    <span>{{ uploadProgress() }}%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div class="bg-slate-800 h-1.5 transition-all duration-200" [style.width.%]="uploadProgress()">
+                    </div>
+                </div>
+            </div>
+            }
+
+            <!-- Upload Button -->
+            <button type="submit" [disabled]="!isFormValid() || isUploading()"
+                class="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none text-white text-xs py-2 px-4 rounded font-medium transition-colors">
+                @if (isUploading()) {
+                Dokument wird hochgeladen...
+                } @else {
+                Dokument hochladen & verarbeiten â†’
+                }
+            </button>
+
+        </form>
+    </div>
+</div>
+
+=== DATEI: \frontend\src\pages\upload\upload.component.ts ===
+import { Component, signal, computed } from '@angular/core';
+import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
+
+@Component({
+    selector: 'app-upload',
+    standalone: true,
+    imports: [ReactiveFormsModule],
+    templateUrl: './upload.component.html',
+    styleUrl: './upload.component.css'
+})
+export class UploadComponent {
+    readonly selectedFile = signal<File | null>(null);
+    readonly isDragging = signal<boolean>(false);
+    readonly isUploading = signal<boolean>(false);
+    readonly uploadProgress = signal<number>(0);
+    readonly errorMessage = signal<string>('');
+    readonly successMessage = signal<string>('');
+
+    readonly categories = signal<string[]>([
+        'Rechnung',
+        'Quittung',
+        'Mietvertrag',
+        'Arbeitsvertrag',
+        'Versicherung',
+        'Steuerunterlagen',
+        'Bank / Finanzen',
+        'Sonstiges'
+    ]);
+
+    private readonly fb = new FormBuilder();
+    readonly uploadForm = this.fb.nonNullable.group({
+        title: ['', [Validators.required]],
+        category: [''],
+        tags: ['']
+    });
+
+    readonly isFormValid = computed(() => {
+        return this.selectedFile() !== null && this.uploadForm.valid;
+    });
+
+    readonly formattedFileSize = computed(() => {
+        const file = this.selectedFile();
+        if (!file) return '0 KB';
+        const sizeInKb = file.size / 1024;
+        return sizeInKb > 1024
+            ? `${(sizeInKb / 1024).toFixed(2)} MB`
+            : `${Math.round(sizeInKb)} KB`;
+    });
+
+    onFileSelected(event: Event): void {
+        const input = event.target as HTMLInputElement;
+        if (input.files?.length) {
+            this.handleFile(input.files[0]);
+        }
+    }
+
+    onDragOver(event: DragEvent): void {
+        event.preventDefault();
+        this.isDragging.set(true);
+    }
+
+    onDragLeave(event: DragEvent): void {
+        event.preventDefault();
+        this.isDragging.set(false);
+    }
+
+    onDrop(event: DragEvent): void {
+        event.preventDefault();
+        this.isDragging.set(false);
+
+        if (event.dataTransfer?.files.length) {
+            this.handleFile(event.dataTransfer.files[0]);
+        }
+    }
+
+    private handleFile(file: File): void {
+        if (file.type !== 'application/pdf') {
+            this.errorMessage.set('Bitte wÃ¤hlen Sie eine gÃ¼ltige PDF-Datei aus.');
+            return;
+        }
+
+        this.errorMessage.set('');
+        this.selectedFile.set(file);
+
+        // Titel automatisch aus Dateinamen ausfÃ¼llen
+        if (!this.uploadForm.controls.title.value) {
+            this.uploadForm.patchValue({ title: file.name });
+        }
+    }
+
+    removeFile(fileInput: HTMLInputElement): void {
+        this.selectedFile.set(null);
+        fileInput.value = '';
+        this.uploadForm.patchValue({ title: '' });
+    }
+
+    onUpload(): void {
+        if (!this.isFormValid()) return;
+
+        this.isUploading.set(true);
+        // SpÃ¤tere Anbindung an den DocumentService
+    }
+}
+
+=== DATEI: \frontend\src\services\auth.service.ts ===
+
+=== DATEI: \frontend\src\services\document.service.ts ===
+import { inject, Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
+import { Document } from '../models/document.model';
+
+@Injectable({providedIn: 'root'})
+export class DocumentService {
+    private readonly http = inject(HttpClient);
+    private readonly apiUrl = '/api/documents';
+
+    getDocuments(): Observable<Document[]> {
+        return this.http.get<Document[]>(this.apiUrl);
+    }
+
+    getDocumentById(id: string): Observable<Document> {
+        return this.http.get<Document>(`${this.apiUrl}/${id}`);
+    }
+}
+
+=== DATEI: \frontend\src\index.html ===
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Frontend</title>
+  <base href="/">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="icon" type="image/x-icon" href="favicon.ico">
+</head>
+<body>
+  <app-root></app-root>
+</body>
+</html>
+
+=== DATEI: \frontend\src\main.ts ===
+import { bootstrapApplication } from '@angular/platform-browser';
+import { appConfig } from './app/app.config';
+import { App } from './app/app';
+
+bootstrapApplication(App, appConfig)
+  .catch((err) => console.error(err));
+
+=== DATEI: \frontend\src\styles.css ===
+/* You can add global styles to this file, and also import other style files */
+
+@import 'tailwindcss';
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+html, body {
+  font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  margin: 0;
+  padding: 0;
+  letter-spacing: -4%;
+  box-sizing: border-box;
+}
+
+=== DATEI: \docker-compose.yml ===
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: paperless-db
+    environment:
+      POSTGRES_DB: paperless
+      POSTGRES_USER: paperless
+      POSTGRES_PASSWORD: paperless_password
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:
+

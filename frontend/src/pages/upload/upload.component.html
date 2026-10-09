@@ -11,7 +11,7 @@
 
             <!-- Drag & Drop -->
             <div class="space-y-1">
-                <label class="block text-xs font-medium text-slate-700">Dokument-Datei (PDF, max. 15MB)</label>
+                <label for="file-input" class="block text-xs font-medium text-slate-700">Dokument-Datei (PDF, max. 15 MB)</label>
 
                 <div (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)"
                     [class.bg-slate-50]="isDragging()"
@@ -31,7 +31,11 @@
                         <div class="text-xs text-slate-600 font-medium">
                             Datei hierher ziehen oder <span class="text-slate-800 underline">durchsuchen</span>
                         </div>
+                        @if (isValidatingFile()) {
+                        <p class="text-[10px] text-slate-500">PDF-Datei wird geprüft...</p>
+                        } @else {
                         <p class="text-[10px] text-slate-400">Nur PDF-Dateien bis zu 15 MB</p>
+                        }
                     </div>
                     } @else {
                     <div class="flex items-center justify-between pointer-events-none">
@@ -62,6 +66,13 @@
                 </label>
                 <input id="doc-title" type="text" formControlName="title" placeholder="z. B. Mietvertrag_2026.pdf"
                     class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+                @if (uploadForm.controls.title.touched && uploadForm.controls.title.errors?.['required']) {
+                <p class="text-xs text-red-600">Bitte geben Sie einen Titel ein.</p>
+                } @else if (uploadForm.controls.title.touched && uploadForm.controls.title.errors?.['pattern']) {
+                <p class="text-xs text-red-600">Der Titel darf nicht nur aus Leerzeichen bestehen.</p>
+                } @else if (uploadForm.controls.title.touched && uploadForm.controls.title.errors?.['maxlength']) {
+                <p class="text-xs text-red-600">Der Titel darf höchstens 200 Zeichen enthalten.</p>
+                }
             </div>
 
             <!-- Kategorie Dropdown -->
@@ -69,9 +80,9 @@
                 <label for="doc-category" class="block text-xs font-medium text-slate-700">Kategorie</label>
                 <select id="doc-category" formControlName="category"
                     class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300">
-                    <option value="" disabled selected>Kategorie auswählen...</option>
-                    @for (cat of categories(); track cat) {
-                    <option [value]="cat">{{ cat }}</option>
+                    <option value="">Kategorie auswählen...</option>
+                    @for (cat of categories; track cat.label) {
+                    <option [value]="cat.label">{{ cat.label }}</option>
                     }
                 </select>
             </div>
@@ -81,40 +92,36 @@
                 <label for="doc-tags" class="block text-xs font-medium text-slate-700">Tags (mit Komma trennen)</label>
                 <input id="doc-tags" type="text" formControlName="tags" placeholder="Rechnung, Verträge, 2026"
                     class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+                @if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['emptyTag']) {
+                <p class="text-xs text-red-600">Bitte trennen Sie Tags mit genau einem Komma und lassen Sie keine Tags leer.</p>
+                } @else if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['tooManyTags']) {
+                <p class="text-xs text-red-600">Es sind höchstens 20 Tags erlaubt.</p>
+                } @else if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['tagTooLong']) {
+                <p class="text-xs text-red-600">Ein Tag darf höchstens 50 Zeichen enthalten.</p>
+                }
             </div>
 
             <!-- Feedback Meldungen -->
             @if (errorMessage()) {
             <div
-                class="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs text-red-700 flex items-center justify-between">
+                role="alert"
+                class="p-2.5 bg-red-50 border border-red-200 rounded-md text-xs text-red-700 flex items-center justify-between">
                 <span>{{ errorMessage() }}</span>
             </div>
             }
 
             @if (successMessage()) {
             <div
-                class="p-2.5 bg-slate-100 border border-slate-200 rounded-md text-xs text-slate-800 font-medium flex items-center justify-between">
+                role="status"
+                class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-md text-xs text-emerald-800 font-medium flex items-center justify-between">
                 <span>{{ successMessage() }}</span>
             </div>
             }
 
-            @if (isUploading()) {
-            <div class="space-y-1">
-                <div class="flex justify-between text-[10px] text-slate-500">
-                    <span>Wird verarbeitet...</span>
-                    <span>{{ uploadProgress() }}%</span>
-                </div>
-                <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
-                    <div class="bg-slate-800 h-1.5 transition-all duration-200" [style.width.%]="uploadProgress()">
-                    </div>
-                </div>
-            </div>
-            }
-
             <!-- Upload Button -->
-            <button type="submit" [disabled]="!isFormValid() || isUploading()"
+            <button type="submit" [disabled]="!isFormValid() || isSubmitting()"
                 class="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none text-white text-xs py-2 px-4 rounded font-medium transition-colors">
-                @if (isUploading()) {
+                @if (isSubmitting()) {
                 Dokument wird hochgeladen...
                 } @else {
                 Dokument hochladen & verarbeiten →

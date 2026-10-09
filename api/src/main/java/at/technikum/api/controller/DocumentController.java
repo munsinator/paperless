@@ -37,8 +37,8 @@ public class DocumentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ResponseDocumentDTO>> findAll() {
-        List<ResponseDocumentDTO> documents = documentService.findAllDocuments().stream()
+    public ResponseEntity<List<ResponseDocumentDTO>> findAll(@RequestParam(required = false) String query) {
+        List<ResponseDocumentDTO> documents = documentService.findAllDocuments(query).stream()
                 .map(mapper::entityToDto)
                 .toList();
 
