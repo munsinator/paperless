@@ -98,6 +98,8 @@
                 <p class="text-xs text-red-600">Es sind höchstens 20 Tags erlaubt.</p>
                 } @else if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['tagTooLong']) {
                 <p class="text-xs text-red-600">Ein Tag darf höchstens 50 Zeichen enthalten.</p>
+                } @else if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['duplicateTags']) {
+                <p class="text-xs text-red-600">Jeder Tag darf nur einmal vorkommen.</p>
                 }
             </div>
 

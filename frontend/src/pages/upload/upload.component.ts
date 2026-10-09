@@ -5,6 +5,7 @@ import { FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angu
 import { Router } from '@angular/router';
 import { DocumentService, UploadDocumentRequest } from '../../services/document.service';
 import { DocumentType } from '../../models/document.model';
+import { hasDuplicateTags } from '../../validators/tag-list.validator';
 
 @Component({
     selector: 'app-upload',
@@ -187,6 +188,7 @@ export class UploadComponent {
         if (tags.some(tag => !tag)) return { emptyTag: true };
         if (tags.length > 20) return { tooManyTags: true };
         if (tags.some(tag => tag.length > 50)) return { tagTooLong: true };
+        if (hasDuplicateTags(value)) return { duplicateTags: true };
         return null;
     }
 

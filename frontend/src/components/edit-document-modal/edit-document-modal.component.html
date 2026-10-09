@@ -41,6 +41,9 @@
                 <label for="edit-tags" class="block text-xs font-medium text-slate-700">Tags (mit Komma trennen)</label>
                 <input id="edit-tags" type="text" formControlName="tags" placeholder="Rechnung, Verträge, 2026"
                     class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+                @if (editForm.controls.tags.touched && editForm.controls.tags.errors?.['duplicateTags']) {
+                <p class="text-xs text-red-600">Jeder Tag darf nur einmal vorkommen.</p>
+                }
             </div>
 
             <!-- Modal Footer / Buttons -->

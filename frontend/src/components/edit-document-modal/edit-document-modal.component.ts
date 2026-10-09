@@ -1,6 +1,7 @@
 import { Component, input, output, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Document, DocumentType } from '../../models/document.model';
+import { duplicateTagsValidator } from '../../validators/tag-list.validator';
 
 @Component({
     selector: 'app-edit-document-modal',
@@ -30,7 +31,7 @@ export class EditDocumentModalComponent implements OnInit {
     readonly editForm = this.fb.nonNullable.group({
         title: ['', [Validators.required]],
         documentType: [''],
-        tags: ['']
+        tags: ['', [duplicateTagsValidator]]
     });
 
     ngOnInit(): void {

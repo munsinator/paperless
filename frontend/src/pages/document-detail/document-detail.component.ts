@@ -7,6 +7,7 @@ import { map } from 'rxjs';
 import { Document, DocumentType } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
 import { DomSanitizer } from '@angular/platform-browser';
+import { duplicateTagsValidator } from '../../validators/tag-list.validator';
 
 @Component({
     selector: 'app-document-detail',
@@ -57,7 +58,7 @@ export class DocumentDetailComponent {
     readonly editForm = this.fb.nonNullable.group({
         title: ['', [Validators.required]],
         documentType: [''],
-        tags: ['']
+        tags: ['', [duplicateTagsValidator]]
     });
 
     constructor() {
