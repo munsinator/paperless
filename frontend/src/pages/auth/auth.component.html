@@ -1,0 +1,98 @@
+<div class="w-full max-w-md mx-auto space-y-6">
+  <div class="bg-white border border-slate-200 rounded-md p-6 space-y-6">
+
+    <div class="space-y-4">
+      <div class="text-center">
+        <h1 class="text-xl font-semibold text-slate-800">Willkommen!</h1>
+        <p class="text-xs text-slate-400 mt-1">Verwalten Sie Ihre Dokumente zentral an einem Ort</p>
+      </div>
+
+      <div role="tablist" aria-label="Authentifizierung"
+        class="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-md text-xs font-medium text-slate-600">
+        <button type="button" role="tab" [attr.aria-selected]="isLogin()" (click)="setMode(true)"
+          [class]="isLogin() ? 'bg-white text-slate-800 shadow-sm' : 'hover:text-slate-800'"
+          class="py-1.5 rounded transition-all text-center focus:outline-none focus:ring-2 focus:ring-slate-400">
+          Anmelden
+        </button>
+        <button type="button" role="tab" [attr.aria-selected]="!isLogin()" (click)="setMode(false)"
+          [class]="!isLogin() ? 'bg-white text-slate-800 shadow-sm' : 'hover:text-slate-800'"
+          class="py-1.5 rounded transition-all text-center focus:outline-none focus:ring-2 focus:ring-slate-400">
+          Registrieren
+        </button>
+      </div>
+    </div>
+
+    @if (errorMessage()) {
+    <div role="alert" class="p-2.5 bg-red-50 border border-red-200 rounded-md text-xs text-red-700">
+      {{ errorMessage() }}
+    </div>
+    }
+
+    @if (successMessage()) {
+    <div role="status"
+      class="p-2.5 bg-emerald-50 border border-emerald-200 rounded-md text-xs text-emerald-800 font-medium">
+      {{ successMessage() }}
+    </div>
+    }
+
+    @if (isLogin()) {
+    <form (submit)="onLogin($event)" class="space-y-4">
+      <div class="space-y-1">
+        <label for="login-username" class="block text-xs font-medium text-slate-700">Benutzername</label>
+        <input #loginUser id="login-username" type="text" autocomplete="username" placeholder="maxmustermann"
+          [value]="username()" (input)="username.set(loginUser.value)"
+          class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 hover:border-slate-300"
+          required />
+      </div>
+
+      <div class="space-y-1">
+        <label for="login-password" class="block text-xs font-medium text-slate-700">Passwort</label>
+        <input #loginPass id="login-password" type="password" autocomplete="current-password" placeholder="••••••••"
+          [value]="password()" (input)="password.set(loginPass.value)"
+          class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 hover:border-slate-300"
+          required />
+      </div>
+
+      <button type="submit" [disabled]="!canLogin()"
+        class="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none text-white text-xs py-2 px-4 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400">
+        @if (isSubmitting()) { Wird angemeldet... } @else { Anmelden }
+      </button>
+    </form>
+    } @else {
+    <form (submit)="onRegister($event)" class="space-y-4">
+      <div class="space-y-1">
+        <label for="register-username" class="block text-xs font-medium text-slate-700">Benutzername</label>
+        <input #regUser id="register-username" type="text" autocomplete="username" placeholder="maxmustermann"
+          minlength="3" [value]="username()" (input)="username.set(regUser.value)"
+          class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 hover:border-slate-300"
+          required />
+      </div>
+
+      <div class="space-y-1">
+        <label for="register-password" class="block text-xs font-medium text-slate-700">Passwort</label>
+        <input #regPass id="register-password" type="password" autocomplete="new-password"
+          placeholder="Mindestens 8 Zeichen" minlength="8" [value]="password()" (input)="password.set(regPass.value)"
+          class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 hover:border-slate-300"
+          required />
+      </div>
+
+      <div class="space-y-1">
+        <label for="register-repeat" class="block text-xs font-medium text-slate-700">Passwort wiederholen</label>
+        <input #regRepeat id="register-repeat" type="password" autocomplete="new-password" placeholder="••••••••"
+          [value]="repeatPassword()" (input)="repeatPassword.set(regRepeat.value)"
+          class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:ring-2 focus:ring-slate-400 hover:border-slate-300"
+          required />
+        @if (repeatPassword() && !passwordsMatch()) {
+        <p class="text-[10px] text-red-600">Die Passwörter stimmen nicht überein.</p>
+        }
+      </div>
+
+      <button type="submit" [disabled]="!canRegister()"
+        class="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none text-white text-xs py-2 px-4 rounded font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-slate-400">
+        @if (isSubmitting()) { Account wird erstellt... } @else { Account erstellen }
+      </button>
+    </form>
+    }
+
+  </div>
+</div>
