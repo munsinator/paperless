@@ -44,7 +44,7 @@ export class AuthService {
 
     async login(credentials: AuthDto): Promise<void> {
         const { token } = await firstValueFrom(
-            this.http.post<{ token: string }>(`${this.apiUrl}/sessions `, credentials)
+            this.http.post<{ token: string }>(`${this.apiUrl}/sessions`, credentials)
         );
         this._token.set(token);
         if (this.isBrowser) localStorage.setItem(TOKEN_KEY, token);
@@ -53,7 +53,7 @@ export class AuthService {
     logout(redirect = true): void {
         this._token.set(null);
         if (this.isBrowser) localStorage.removeItem(TOKEN_KEY);
-        if (redirect) this.router.navigate(['/login']);
+        if (redirect) this.router.navigate(['/auth']);
     }
 
     private loadToken(): string | null {
