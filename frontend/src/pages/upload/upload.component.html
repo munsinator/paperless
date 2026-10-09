@@ -1,0 +1,126 @@
+<div class="w-full flex flex-col items-center gap-6">
+    <div class="w-full bg-white border border-slate-200 rounded-md p-6 space-y-6">
+
+        <!-- Header -->
+        <div class="text-center">
+            <h1 class="text-xl font-semibold text-slate-800">Dokument hochladen</h1>
+            <p class="text-xs text-slate-400 mt-1">Laden Sie Ihre PDF-Dateien für die automatische Verarbeitung hoch</p>
+        </div>
+
+        <form [formGroup]="uploadForm" (ngSubmit)="onUpload()" class="space-y-4">
+
+            <!-- Drag & Drop -->
+            <div class="space-y-1">
+                <label class="block text-xs font-medium text-slate-700">Dokument-Datei (PDF, max. 15MB)</label>
+
+                <div (dragover)="onDragOver($event)" (dragleave)="onDragLeave($event)" (drop)="onDrop($event)"
+                    [class.bg-slate-50]="isDragging()"
+                    class="border-2 border-dashed border-slate-200 hover:border-slate-300 rounded-md p-6 text-center transition-colors cursor-pointer relative overflow-hidden">
+
+                    <input #fileInput type="file" id="file-input" accept=".pdf,application/pdf"
+                        (change)="onFileSelected($event)" [class.pointer-events-none]="selectedFile()"
+                        class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+
+                    @if (!selectedFile()) {
+                    <div class="flex flex-col items-center gap-2 pointer-events-none">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-8 h-8 text-slate-400" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M12 16.5V9.75m0 0l3 3m-3-3l-3 3M6.75 19.5a4.5 4.5 0 01-1.41-8.775 5.25 5.25 0 0110.233-2.33 3 3 0 013.758 3.848A3.752 3.752 0 0118 19.5H6.75z" />
+                        </svg>
+                        <div class="text-xs text-slate-600 font-medium">
+                            Datei hierher ziehen oder <span class="text-slate-800 underline">durchsuchen</span>
+                        </div>
+                        <p class="text-[10px] text-slate-400">Nur PDF-Dateien bis zu 15 MB</p>
+                    </div>
+                    } @else {
+                    <div class="flex items-center justify-between pointer-events-none">
+                        <div class="flex items-center gap-2 text-left min-w-0">
+                            <div
+                                class="w-8 h-8 border border-slate-200 text-slate-700 rounded flex items-center justify-center shrink-0 text-[10px] font-semibold">
+                                PDF
+                            </div>
+                            <div class="min-w-0">
+                                <p class="text-xs font-medium text-slate-800 truncate">{{ selectedFile()?.name }}</p>
+                                <p class="text-[10px] text-slate-400">{{ formattedFileSize() }}</p>
+                            </div>
+                        </div>
+
+                        <button type="button" (click)="removeFile(fileInput)"
+                            class="relative z-20 pointer-events-auto text-slate-400 hover:text-slate-600 p-2 text-xs font-semibold">
+                            ✕
+                        </button>
+                    </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Titel -->
+            <div class="space-y-1">
+                <label for="doc-title" class="block text-xs font-medium text-slate-700">
+                    Titel / Name <span class="text-slate-400">*</span>
+                </label>
+                <input id="doc-title" type="text" formControlName="title" placeholder="z. B. Mietvertrag_2026.pdf"
+                    class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+            </div>
+
+            <!-- Kategorie Dropdown -->
+            <div class="space-y-1">
+                <label for="doc-category" class="block text-xs font-medium text-slate-700">Kategorie</label>
+                <select id="doc-category" formControlName="category"
+                    class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300">
+                    <option value="" disabled selected>Kategorie auswählen...</option>
+                    @for (cat of categories(); track cat) {
+                    <option [value]="cat">{{ cat }}</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Tags -->
+            <div class="space-y-1">
+                <label for="doc-tags" class="block text-xs font-medium text-slate-700">Tags (mit Komma trennen)</label>
+                <input id="doc-tags" type="text" formControlName="tags" placeholder="Rechnung, Verträge, 2026"
+                    class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+            </div>
+
+            <!-- Feedback Meldungen -->
+            @if (errorMessage()) {
+            <div
+                class="p-2.5 bg-slate-50 border border-slate-200 rounded-md text-xs text-red-700 flex items-center justify-between">
+                <span>{{ errorMessage() }}</span>
+            </div>
+            }
+
+            @if (successMessage()) {
+            <div
+                class="p-2.5 bg-slate-100 border border-slate-200 rounded-md text-xs text-slate-800 font-medium flex items-center justify-between">
+                <span>{{ successMessage() }}</span>
+            </div>
+            }
+
+            @if (isUploading()) {
+            <div class="space-y-1">
+                <div class="flex justify-between text-[10px] text-slate-500">
+                    <span>Wird verarbeitet...</span>
+                    <span>{{ uploadProgress() }}%</span>
+                </div>
+                <div class="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                    <div class="bg-slate-800 h-1.5 transition-all duration-200" [style.width.%]="uploadProgress()">
+                    </div>
+                </div>
+            </div>
+            }
+
+            <!-- Upload Button -->
+            <button type="submit" [disabled]="!isFormValid() || isUploading()"
+                class="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none text-white text-xs py-2 px-4 rounded font-medium transition-colors">
+                @if (isUploading()) {
+                Dokument wird hochgeladen...
+                } @else {
+                Dokument hochladen & verarbeiten →
+                }
+            </button>
+
+        </form>
+    </div>
+</div>

@@ -1,0 +1,187 @@
+<div class="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+
+    <!-- Back Button -->
+    <div class="flex items-center justify-between">
+        <a routerLink="/dashboard"
+            class="inline-flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
+            </svg>
+            Zurück zum Dashboard
+        </a>
+
+        <!-- Action Buttons -->
+        <div class="flex items-center gap-2">
+            <button type="button" (click)="onDelete()" [disabled]="isDeleting()"
+                class="bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 text-xs px-3 py-1.5 rounded font-medium transition-colors disabled:opacity-50 cursor-pointer inline-flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                    stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                </svg>
+                @if (isDeleting()) { Lösche... } @else { Dokument löschen }
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Grid: PDF Vorschau & Metadaten/AI Box -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LINKS: PDF Vorschau / Dokumenten-Viewer -->
+        <div
+            class="lg:col-span-7 bg-white border border-slate-200 rounded-md shadow-xs overflow-hidden flex flex-col min-h-[550px]">
+            <div class="bg-slate-50 px-4 py-3 border-b border-slate-200 flex items-center justify-between">
+                <span class="text-xs font-semibold text-slate-700 flex items-center gap-2">
+                    Dokumentenvorschau
+                </span>
+            </div>
+
+            <div class="flex-1 bg-slate-100 flex items-center justify-center p-4">
+                @if (document()?.fileUrl) {
+                <iframe [src]="safeFileUrl()"
+                    class="w-full h-full min-h-[500px] rounded border border-slate-200 bg-white" title="PDF Vorschau">
+                </iframe>
+                } @else {
+                <!-- Fallback Visualisierung -->
+                <div class="text-center p-8 border-2 border-dashed border-slate-300 rounded-lg max-w-sm">
+                    <div
+                        class="w-12 h-14 bg-red-100 text-red-600 rounded-lg mx-auto flex items-center justify-center font-bold text-xs shadow-inner mb-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-7 h-7" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                        </svg>
+                    </div>
+                    <p class="text-xs font-medium text-slate-700">{{ document()?.title }}</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Vorschau wird geladen...</p>
+                </div>
+                }
+            </div>
+        </div>
+
+        <!-- RECHTS: Metadaten, AI-Zusammenfassung & OCR Text -->
+        <div class="lg:col-span-5 space-y-6">
+
+            <div class="bg-white border border-slate-200 rounded-md p-6 space-y-5 shadow-xs">
+
+                <!-- Tab Navigation -->
+                <div class="flex border-b border-slate-200">
+                    <button type="button" (click)="activeTab.set('metadata')"
+                        [class.border-slate-800]="activeTab() === 'metadata'"
+                        [class.text-slate-800]="activeTab() === 'metadata'"
+                        class="pb-2 px-3 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-colors cursor-pointer inline-flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M10.5 6h9.75M10.5 6a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 6H7.5m3 12h9.75m-9.75 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 18H7.5m9-6h2.25m-2.25 0a1.5 1.5 0 11-3 0m3 0a1.5 1.5 0 10-3 0M3.75 12h8.25" />
+                        </svg>
+                        Metadaten
+                    </button>
+                    <button type="button" (click)="activeTab.set('ai')" [class.border-slate-800]="activeTab() === 'ai'"
+                        [class.text-slate-800]="activeTab() === 'ai'"
+                        class="pb-2 px-3 text-xs font-semibold border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition-colors cursor-pointer inline-flex items-center gap-1.5">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round"
+                                d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.456 2.456L21.75 6l-1.035.259a3.375 3.375 0 00-2.456 2.456z" />
+                        </svg>
+                        KI & OCR Text
+                    </button>
+                </div>
+
+                <!-- TAB 1: METADATEN FORMULAR -->
+                @if (activeTab() === 'metadata') {
+                <form [formGroup]="editForm" (ngSubmit)="onSave()" class="space-y-4">
+
+                    <!-- Titel -->
+                    <div class="space-y-1">
+                        <label for="detail-title" class="block text-xs font-medium text-slate-700">
+                            Titel / Name <span class="text-slate-400">*</span>
+                        </label>
+                        <input id="detail-title" type="text" formControlName="title"
+                            class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+                    </div>
+
+                    <!-- Kategorie -->
+                    <div class="space-y-1">
+                        <label for="detail-category" class="block text-xs font-medium text-slate-700">Kategorie</label>
+                        <select id="detail-category" formControlName="category"
+                            class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300">
+                            <option value="">Keine Kategorie</option>
+                            @for (cat of categories(); track cat) {
+                            <option [value]="cat">{{ cat }}</option>
+                            }
+                        </select>
+                    </div>
+
+                    <!-- Manuelle Tags -->
+                    <div class="space-y-1">
+                        <label for="detail-tags" class="block text-xs font-medium text-slate-700">Tags (mit Komma
+                            trennen)</label>
+                        <input id="detail-tags" type="text" formControlName="tags"
+                            placeholder="Rechnung, Verträge, 2026"
+                            class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+                    </div>
+
+                    <!-- Erstellungsinformationen & AutoTags -->
+                    <div class="p-3 bg-slate-50 border border-slate-100 rounded text-xs text-slate-500 space-y-1">
+                        <p><strong>Erstellt am:</strong> {{ document()?.createdAt | date:'dd.MM.yyyy HH:mm' }}</p>
+                    </div>
+
+                    <!-- Feedback Meldung -->
+                    @if (saveSuccess()) {
+                    <div
+                        class="p-2.5 bg-emerald-50 border border-emerald-200 rounded text-xs text-emerald-800 font-medium">
+                        Änderungen erfolgreich gespeichert!
+                    </div>
+                    }
+
+                    <div class="pt-2 flex justify-end">
+                        <button type="submit" [disabled]="editForm.invalid || isSaving()"
+                            class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-xs px-4 py-2 rounded font-medium transition-colors cursor-pointer">
+                            @if (isSaving()) { Speichere... } @else { Änderungen speichern }
+                        </button>
+                    </div>
+
+                </form>
+                }
+
+                <!-- TAB 2: KI ZUSAMMENFASSUNG & OCR TEXT -->
+                @if (activeTab() === 'ai') {
+                <div class="space-y-4">
+
+                    <!-- GenAI Zusammenfassung -->
+                    <div class="space-y-1.5">
+                        <h3 class="text-xs font-semibold text-slate-700 flex items-center gap-1.5">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-slate-600" fill="none"
+                                viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round"
+                                    d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                            </svg>
+                            GenAI Zusammenfassung
+                        </h3>
+                        <div
+                            class="p-3 bg-slate-50 border border-slate-200 rounded-md text-xs text-slate-700 leading-relaxed">
+                            {{ document()?.summary || 'Keine Zusammenfassung vorhanden.' }}
+                        </div>
+                    </div>
+
+                    <!-- Extrahierter OCR Text -->
+                    <div class="space-y-1 pt-2">
+                        <label for="ocr-text" class="block text-xs font-medium text-slate-700">
+                            Extrahierter OCR Text
+                        </label>
+                        <textarea id="ocr-text" rows="6" readonly [value]="document()?.ocrText || 'Kein OCR Text verfügbar.'" class="w-full bg-slate-50 text-slate-600 font-mono text-xs border border-slate-200 rounded-md p-2.5 focus:outline-none resize-none cursor-default"></textarea>
+                    </div>
+
+                </div>
+                }
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>

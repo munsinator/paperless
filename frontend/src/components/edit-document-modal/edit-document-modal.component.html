@@ -1,0 +1,60 @@
+<!-- Modal Backdrop -->
+<div class="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+
+    <!-- Modal Dialog -->
+    <div class="bg-white border border-slate-200 rounded-lg shadow-xl w-full max-w-md overflow-hidden flex flex-col">
+
+        <!-- Modal Header -->
+        <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-sm font-semibold text-slate-800">Dokument-Metadaten bearbeiten</h2>
+            <button type="button" (click)="onClose()" class="text-slate-400 hover:text-slate-600 p-1 text-base">
+                ✕
+            </button>
+        </div>
+
+        <!-- Modal Body / Form -->
+        <form [formGroup]="editForm" (ngSubmit)="onSave()" class="p-5 space-y-4">
+
+            <!-- Titel -->
+            <div class="space-y-1">
+                <label for="edit-title" class="block text-xs font-medium text-slate-700">
+                    Titel / Name <span class="text-slate-400">*</span>
+                </label>
+                <input id="edit-title" type="text" formControlName="title" placeholder="z. B. Mietvertrag_2026.pdf"
+                    class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+            </div>
+
+            <!-- Kategorie -->
+            <div class="space-y-1">
+                <label for="edit-category" class="block text-xs font-medium text-slate-700">Kategorie</label>
+                <select id="edit-category" formControlName="category"
+                    class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300">
+                    <option value="">Keine Kategorie</option>
+                    @for (cat of categories(); track cat) {
+                    <option [value]="cat">{{ cat }}</option>
+                    }
+                </select>
+            </div>
+
+            <!-- Tags -->
+            <div class="space-y-1">
+                <label for="edit-tags" class="block text-xs font-medium text-slate-700">Tags (mit Komma trennen)</label>
+                <input id="edit-tags" type="text" formControlName="tags" placeholder="Rechnung, Verträge, 2026"
+                    class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
+            </div>
+
+            <!-- Modal Footer / Buttons -->
+            <div class="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
+                <button type="button" (click)="onClose()"
+                    class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs rounded font-medium transition-colors">
+                    Abbrechen
+                </button>
+                <button type="submit" [disabled]="editForm.invalid"
+                    class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-xs rounded font-medium transition-colors">
+                    Speichern
+                </button>
+            </div>
+
+        </form>
+    </div>
+</div>

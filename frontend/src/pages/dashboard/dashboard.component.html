@@ -1,0 +1,23 @@
+<div class="w-full flex flex-col items-center gap-6">
+    <div class="w-full">
+        <app-searchbar class="w-full block" (search)="onSearch($event)" />
+    </div>
+
+    <div class="w-full flex flex-col gap-4">
+        @if (documentsResource.isLoading()) {
+        <div class="flex items-center justify-center py-10">
+            <div class="w-6 h-6 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
+        </div>
+        } @else if (documentsResource.error()) {
+        <p class="text-red-600 text-center text-sm">Dokumente konnten nicht geladen werden.</p>
+        } @else {
+        @for (doc of allDocuments(); track doc.id) {
+        <app-document-card [document]="doc" (delete)="onDeleteDocument($event)" (update)="onUpdateDocument($event)"
+            class="w-full block" />
+        } @empty {
+        <p class="text-slate-500 text-center">Keine Dokumente vorhanden.</p>
+        }
+        }
+    </div>
+
+</div>
