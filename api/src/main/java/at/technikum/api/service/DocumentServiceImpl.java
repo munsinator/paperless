@@ -1,5 +1,6 @@
 package at.technikum.api.service;
 
+import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
@@ -42,7 +43,7 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public void delete(UUID documentId) {
         if(!documentRepository.existsById(documentId)) {
-            throw new RuntimeException("Document not found with ID: " + documentId);
+            throw new DocumentNotFoundException(documentId);
         }
         documentRepository.deleteById(documentId);
     }
@@ -60,6 +61,6 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional(readOnly = true)
     public Document findDocumentById(UUID documentId) {
         return documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Document not found with ID: " + documentId));
+                .orElseThrow(() -> new DocumentNotFoundException(documentId));
     }
 }

@@ -1,6 +1,7 @@
 package at.technikum.api;
 
 import at.technikum.api.controller.DocumentController;
+import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.mapper.DocumentMapperImpl;
 import at.technikum.api.service.JwtService;
 import at.technikum.api.service.UserService;
@@ -14,6 +15,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.UUID;
 
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -67,5 +69,30 @@ class DocumentControllerTests {
                 .andExpect(status().isBadRequest());
 
         verifyNoInteractions(documentService);
+    }
+
+    @Test
+    void get_missing_document_returns_not_found() throws Exception {
+        UUID missingId = UUID.randomUUID();
+        when(documentService.findDocumentById(missingId))
+                .thenThrow(new DocumentNotFoundException(missingId));
+
+        mockMvc.perform(get("/document/{documentId}", missingId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Document with ID " + missingId + " was not found."));
+    }
+
+    @Test
+    void delete_missing_document_returns_not_found() throws Exception {
+        UUID missingId = UUID.randomUUID();
+        doThrow(new DocumentNotFoundException(missingId)).when(documentService).delete(missingId);
+
+        mockMvc.perform(delete("/document/{documentId}", missingId))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Document with ID " + missingId + " was not found."));
     }
 }
