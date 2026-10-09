@@ -12,9 +12,13 @@
         </li> 
         <li class="flex items-center p-1 text-sm gap-x-2 text-slate-600 hover:font-bold transition-all"> 
           <a routerLink="/upload">Upload</a> </li> 
-        <li class="flex items-center p-1 text-sm gap-x-2 text-slate-600 hover:font-bold transition-all"> 
-          <a routerLink="/auth">Login</a> 
-        </li> 
+        <li class="flex items-center p-1 text-sm gap-x-2 text-slate-600 hover:font-bold transition-all">
+          @if (isLoggedIn()) {
+            <button type="button" (click)="logout()" class="hover:font-bold">Logout</button>
+          } @else {
+            <a routerLink="/auth">Login</a>
+          }
+        </li>
       </ul> 
     </div>
 
@@ -42,7 +46,11 @@
           <a routerLink="/upload" (click)="isMenuOpen = false">Upload</a>
         </li>
         <li class="p-1 text-sm text-slate-600 hover:font-bold">
-          <a routerLink="/auth" (click)="isMenuOpen = false">Login</a>
+          @if (isLoggedIn()) {
+            <button type="button" (click)="logout()" class="hover:font-bold">Logout</button>
+          } @else {
+            <a routerLink="/auth" (click)="isMenuOpen = false">Login</a>
+          }
         </li>
       </ul>
     </div>
