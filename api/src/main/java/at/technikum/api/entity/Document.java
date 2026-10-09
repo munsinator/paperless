@@ -4,10 +4,10 @@ import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
+import java.util.List;
 
 @Entity
 @Data
@@ -18,14 +18,24 @@ public class Document {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-    private String title;
-    private String content; // for ocr
 
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String ocrText;
+
+    @Column(columnDefinition = "TEXT")
+    private String summary;
+
+    private String fileUrl;
+    private LocalDate createdAt;
+
+    @ElementCollection
+    @CollectionTable(name = "document_tags", joinColumns = @JoinColumn(name = "document_id"))
+    @Column(name = "tag")
+    private List<String> tags;
+   
     @ManyToOne
     @JoinColumn(name = "document_type")
     private DocumentType type;
-
-    private LocalDate created;
-    private LocalTime added;
-    private LocalTime modified;
 }
