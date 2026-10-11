@@ -1,4 +1,21 @@
 services:
+  paperless-web-ui:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - paperless-rest
+
+  paperless-rest:
+    build: ./api
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/paperless
+      SPRING_DATASOURCE_USERNAME: paperless
+      SPRING_DATASOURCE_PASSWORD: paperless_password
+      JWT_SECRET: ${JWT_SECRET}
+    depends_on:
+      - postgres
+
   postgres:
     image: postgres:16-alpine
     container_name: paperless-db

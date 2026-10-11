@@ -1,4 +1,4 @@
-services:
-  postgres:
-    ports: !override
-      - "5434:5432"
+#services:
+#  postgres:
+#    ports: !override
+#      - "5434:5432"

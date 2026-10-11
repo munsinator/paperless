@@ -36,5 +36,6 @@ build/
 *.txt
 
 # Lokale Konfigurationen ignorieren
+.env
 application-local.properties
 docker-compose.override.yml
