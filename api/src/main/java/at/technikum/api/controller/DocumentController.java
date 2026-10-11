@@ -36,9 +36,23 @@ public class DocumentController {
         return new ResponseEntity<>(mapper.entityToDto(savedEntity), HttpStatus.CREATED);
     }
 
+    @PutMapping("/{documentId}")
+    public ResponseEntity<ResponseDocumentDTO> update(
+            @PathVariable UUID documentId,
+            @Valid @RequestBody RequestDocumentDTO requestDocumentDTO
+    ) {
+        Document entityToUpdate = mapper.dtoToEntity(requestDocumentDTO);
+        Document updatedEntity = documentService.update(
+                documentId,
+                entityToUpdate,
+                requestDocumentDTO.getType()
+        );
+        return ResponseEntity.ok(mapper.entityToDto(updatedEntity));
+    }
+
     @GetMapping
-    public ResponseEntity<List<ResponseDocumentDTO>> findAll() {
-        List<ResponseDocumentDTO> documents = documentService.findAllDocuments().stream()
+    public ResponseEntity<List<ResponseDocumentDTO>> findAll(@RequestParam(required = false) String query) {
+        List<ResponseDocumentDTO> documents = documentService.findAllDocuments(query).stream()
                 .map(mapper::entityToDto)
                 .toList();
 

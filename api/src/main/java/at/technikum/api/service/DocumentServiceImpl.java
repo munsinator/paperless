@@ -1,12 +1,10 @@
 package at.technikum.api.service;
 
-import at.technikum.api.entity.Category;
+import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.repository.DocumentTypeRepository;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 import at.technikum.api.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -28,15 +26,21 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public Document save(Document document, DocumentTypeEnum requestedType) {
-        //Null check in case the user adds a document type, otherwise null
-        //TODO: Might change this approach in the future
-        DocumentType type = null;
-        if (requestedType != null) {
-            type = documentTypeRepository.findById(requestedType)
-                    .orElseThrow(() -> new ResponseStatusException(
-                            HttpStatus.BAD_REQUEST, "Document type is not configured"));
+        document.setType(resolveType(requestedType));
+        document.setCreatedAt(LocalDate.now());
+        if (document.getTags() == null) {
+            document.setTags(List.of());
         }
-        document.setType(type);
+        return documentRepository.save(document);
+    }
+
+    @Override
+    @Transactional
+    public Document update(UUID documentId, Document updatedDocument, DocumentTypeEnum requestedType) {
+        Document document = findDocumentById(documentId);
+        document.setTitle(updatedDocument.getTitle());
+        document.setTags(updatedDocument.getTags() == null ? List.of() : updatedDocument.getTags());
+        document.setType(resolveType(requestedType));
         return documentRepository.save(document);
     }
 
@@ -44,22 +48,32 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public void delete(UUID documentId) {
         if(!documentRepository.existsById(documentId)) {
-            throw new RuntimeException("Document not found with ID: " + documentId);
+            throw new DocumentNotFoundException(documentId);
         }
         documentRepository.deleteById(documentId);
     }
 
-    // TODO here later search as attribute
     @Override
     @Transactional(readOnly = true)
-    public List<Document> findAllDocuments() {
-        return documentRepository.findAll();
+    public List<Document> findAllDocuments(String query) {
+        if (query == null || query.isBlank()) {
+            return documentRepository.findAll();
+        }
+        return documentRepository.findByTitleContainingIgnoreCaseOrOcrTextContainingIgnoreCase(query, query);
     }
 
     @Override
     @Transactional(readOnly = true)
     public Document findDocumentById(UUID documentId) {
         return documentRepository.findById(documentId)
-                .orElseThrow(() -> new RuntimeException("Document not found with ID: " + documentId));
+                .orElseThrow(() -> new DocumentNotFoundException(documentId));
+    }
+
+    private DocumentType resolveType(DocumentTypeEnum requestedType) {
+        if (requestedType == null) {
+            return null;
+        }
+        return documentTypeRepository.findById(requestedType)
+                .orElseGet(() -> documentTypeRepository.save(new DocumentType(requestedType)));
     }
 }
