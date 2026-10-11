@@ -1,11 +1,9 @@
 FROM eclipse-temurin:25-jdk-ubi10-minimal
+WORKDIR /app
 
-# paperlessREST
-WORKDIR /api
+# Build locally with ./mvnw.cmd clean package -DskipTests before building the image.
+COPY target/api-0.0.1-SNAPSHOT.jar app.jar
 
-# copies src code from target to /paperlessREST
-COPY . .
+EXPOSE 8081
 
-EXPOSE 81
-
-CMD ["java", "-jar", "/api-0.0.1-SNAPSHOT.jar"]
+ENTRYPOINT ["java", "-jar", "app.jar"]
