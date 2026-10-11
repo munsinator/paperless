@@ -9,7 +9,7 @@ import org.mapstruct.Mapping;
 @Mapper(componentModel = "spring")
 public interface DocumentMapper {
 
-    // Ingoing: RequestDto -> Entity for DB-Speicherung
+    // The service resolves documentType to the persisted DocumentType entity.
     @Mapping(target = "type", ignore = true)
     Document dtoToEntity(RequestDocumentDTO dto);
 
