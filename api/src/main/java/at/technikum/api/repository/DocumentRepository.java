@@ -8,5 +8,6 @@ import java.util.UUID;
 
 @Repository
 public interface DocumentRepository extends JpaRepository<Document, UUID> {
+	java.util.List<Document> findByTitleContainingIgnoreCaseOrOcrTextContainingIgnoreCase(String title, String content);
 
 }

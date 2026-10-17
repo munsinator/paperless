@@ -1,0 +1,5 @@
+# uncomment if port 5432 is already used by something else
+#services:
+#  postgres:
+#    ports: !override
+#      - "5434:5432"
