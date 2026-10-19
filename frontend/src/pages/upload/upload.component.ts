@@ -41,7 +41,7 @@ export class UploadComponent {
     readonly uploadForm = this.fb.nonNullable.group({
         title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
         documentType: [''],
-        tags: ['', [this.tagsValidator]]
+        tags: this.fb.nonNullable.control('', { validators: [this.tagsValidator], updateOn: 'change' })
     });
     private readonly formStatus = toSignal(this.uploadForm.statusChanges, {
         initialValue: this.uploadForm.status

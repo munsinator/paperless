@@ -66,11 +66,11 @@
                 </label>
                 <input id="doc-title" type="text" formControlName="title" placeholder="z. B. Mietvertrag_2026.pdf"
                     class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
-                @if (uploadForm.controls.title.touched && uploadForm.controls.title.errors?.['required']) {
+                @if (uploadForm.controls.title.dirty && uploadForm.controls.title.errors?.['required']) {
                 <p class="text-xs text-red-600">Bitte geben Sie einen Titel ein.</p>
-                } @else if (uploadForm.controls.title.touched && uploadForm.controls.title.errors?.['pattern']) {
+                } @else if (uploadForm.controls.title.dirty && uploadForm.controls.title.errors?.['pattern']) {
                 <p class="text-xs text-red-600">Der Titel darf nicht nur aus Leerzeichen bestehen.</p>
-                } @else if (uploadForm.controls.title.touched && uploadForm.controls.title.errors?.['maxlength']) {
+                } @else if (uploadForm.controls.title.dirty && uploadForm.controls.title.errors?.['maxlength']) {
                 <p class="text-xs text-red-600">Der Titel darf höchstens 200 Zeichen enthalten.</p>
                 }
             </div>

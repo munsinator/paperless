@@ -58,7 +58,7 @@ export class DocumentDetailComponent {
     readonly editForm = this.fb.nonNullable.group({
         title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
         documentType: [''],
-        tags: ['', [duplicateTagsValidator]]
+        tags: this.fb.nonNullable.control('', { validators: [duplicateTagsValidator], updateOn: 'change' })
     });
 
     constructor() {
