@@ -6,12 +6,17 @@ import { UploadComponent } from '../pages/upload/upload.component';
 import { authGuard } from '../guards/auth.guard';
 
 export const routes: Routes = [
-    { path: '', redirectTo: 'dashboard', pathMatch: 'full'},
-
-    { path: 'dashboard', component: DashboardComponent, canActivate: [authGuard]},
-    { path: 'upload', component: UploadComponent, canActivate: [authGuard]},
-    { path: 'document/:id', component: DocumentDetailComponent, canActivate: [authGuard]},
-    { path: 'auth', component: AuthComponent},
-
-    { path: '**', redirectTo: 'dashboard'}
+    {
+        path: '',
+        canActivateChild: [authGuard],
+        children: [
+            { path: '', redirectTo: 'dashboard', pathMatch: 'full' },
+            { path: 'dashboard', component: DashboardComponent },
+            { path: 'upload', component: UploadComponent },
+            { path: 'document/:id', component: DocumentDetailComponent }
+        ]
+    },
+    { path: 'auth', component: AuthComponent },
+    // lazy laden der 404 Page
+    { path: '**', loadComponent: () => import('../pages/not-found/not-found.component').then(m => m.NotFoundComponent) }
 ];
