@@ -1,7 +1,7 @@
 import { Component, effect, input, output, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Document, DocumentType } from '../../models/document.model';
-import { duplicateTagsValidator, noWhitespaceInTagsValidator } from '../../validators/tag-list.validator';
+import { TagService } from '../../services/tag.service';
 
 @Component({
     selector: 'app-edit-document-modal',
@@ -11,6 +11,7 @@ import { duplicateTagsValidator, noWhitespaceInTagsValidator } from '../../valid
 })
 export class EditDocumentModalComponent {
     private readonly fb = inject(FormBuilder);
+    private readonly tagService = inject(TagService);
 
     readonly document = input.required<Document>();
     readonly documentTypes: { label: string; value: DocumentType }[] = [
@@ -29,11 +30,8 @@ export class EditDocumentModalComponent {
     // 
     readonly editForm = this.fb.nonNullable.group({
         title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
-        documentType: [''],
-        tags: this.fb.nonNullable.control('', {
-            validators: [duplicateTagsValidator, noWhitespaceInTagsValidator],
-            updateOn: 'change'
-        })
+        documentType: this.fb.nonNullable.control<DocumentType | ''>(''),
+        tags: ['', [this.tagService.validator]]
     });
 
     constructor() {
@@ -42,28 +40,28 @@ export class EditDocumentModalComponent {
             this.editForm.patchValue({
                 title: doc.title,
                 documentType: doc.documentType || '',
-                tags: doc.tags ? doc.tags.join(', ') : ''
+                tags: this.tagService.formatTags(doc.tags)
             });
+            this.editForm.markAsPristine();
         });
     }
 
     onSave(): void {
-        this.editForm.markAllAsTouched();
-        if (this.editForm.invalid) return;
+        if (this.editForm.invalid) {
+            this.editForm.markAllAsTouched();
+            return;
+        }
+        if (this.editForm.pristine) {
+            this.closed.emit();
+            return;
+        }
 
-        const formValues = this.editForm.getRawValue();
+        const { title, documentType, tags } = this.editForm.getRawValue();
 
-        // Tags-String in Array umwandeln & Trimmen
-        const tagsArray = formValues.tags
-            .split(',')
-            .map(tag => tag.trim())
-            .filter(tag => tag.length > 0);
-
-        const documentType = this.documentTypes.find(item => item.value === formValues.documentType)?.value;
         const updatedData: Partial<Document> = {
-            title: formValues.title,
-            documentType,
-            tags: tagsArray
+            title: title.trim(),
+            documentType: documentType || undefined,
+            tags: this.tagService.parseTags(tags)
         };
 
         this.saved.emit(updatedData);

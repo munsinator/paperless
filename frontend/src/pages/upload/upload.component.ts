@@ -1,10 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
+import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DocumentService, UploadDocumentRequest } from '../../services/document.service';
 import { DocumentType } from '../../models/document.model';
-import { hasDuplicateTags, hasWhitespaceInTags } from '../../validators/tag-list.validator';
+import { TagService } from '../../services/tag.service';
 
 @Component({
     selector: 'app-upload',
@@ -17,6 +17,7 @@ export class UploadComponent {
     private static readonly maxFileSize = 15 * 1024 * 1024;
     private readonly documentService = inject(DocumentService);
     private readonly router = inject(Router);
+    private readonly tagService = inject(TagService);
 
     readonly selectedFile = signal<File | null>(null);
     readonly isDragging = signal<boolean>(false);
@@ -36,11 +37,10 @@ export class UploadComponent {
     ];
 
     private readonly fb = new FormBuilder();
-    private readonly tagsValidator: ValidatorFn = control => this.validateTags(String(control.value));
     readonly uploadForm = this.fb.nonNullable.group({
         title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
         documentType: [''],
-        tags: this.fb.nonNullable.control('', { validators: [this.tagsValidator], updateOn: 'change' })
+        tags: ['', [this.tagService.validator]]
     });
     readonly formattedFileSize = computed(() => {
         const file = this.selectedFile();
@@ -140,7 +140,7 @@ export class UploadComponent {
         const request: UploadDocumentRequest = {
             title,
             type: documentType,
-            tags: this.normalizeTags(formValues.tags)
+            tags: this.tagService.parseTags(formValues.tags)
         };
 
         this.errorMessage.set('');
@@ -161,29 +161,6 @@ export class UploadComponent {
                 this.errorMessage.set(this.getUploadErrorMessage(error));
             }
         });
-    }
-
-    private normalizeTags(value: string): string[] {
-        const seen = new Set<string>();
-        return value.split(',')
-            .map(tag => tag.trim())
-            .filter(tag => {
-                const normalized = tag.toLocaleLowerCase();
-                if (!tag || seen.has(normalized)) return false;
-                seen.add(normalized);
-                return true;
-            });
-    }
-
-    private validateTags(value: string): { [key: string]: boolean } | null {
-        if (!value.trim()) return null;
-        const tags = value.split(',').map(tag => tag.trim());
-        if (tags.some(tag => !tag)) return { emptyTag: true };
-        if (tags.length > 20) return { tooManyTags: true };
-        if (tags.some(tag => tag.length > 50)) return { tagTooLong: true };
-        if (hasDuplicateTags(value)) return { duplicateTags: true };
-        if (hasWhitespaceInTags(value)) return { whitespaceInTag: true };
-        return null;
     }
 
     private getUploadErrorMessage(error: unknown): string {

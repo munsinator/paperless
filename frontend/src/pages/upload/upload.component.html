@@ -123,7 +123,7 @@
             }
 
             <!-- Upload Button -->
-            <button type="submit" [disabled]="isValidatingFile() || isSubmitting()"
+            <button type="submit" [disabled]="uploadForm.invalid || !selectedFile() || isValidatingFile() || isSubmitting()"
                 class="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none text-white text-xs py-2 px-4 rounded font-medium transition-colors">
                 @if (isSubmitting()) {
                 Dokument wird hochgeladen...

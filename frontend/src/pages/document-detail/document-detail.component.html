@@ -129,7 +129,13 @@
                         <input id="detail-tags" type="text" formControlName="tags"
                             placeholder="Rechnung, Verträge, 2026"
                             class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300" />
-                        @if ((editForm.controls.tags.dirty || editForm.controls.tags.touched) && editForm.controls.tags.errors?.['duplicateTags']) {
+                        @if ((editForm.controls.tags.dirty || editForm.controls.tags.touched) && editForm.controls.tags.errors?.['emptyTag']) {
+                        <p class="text-xs text-red-600">Bitte trennen Sie Tags mit genau einem Komma und lassen Sie keine Tags leer.</p>
+                        } @else if ((editForm.controls.tags.dirty || editForm.controls.tags.touched) && editForm.controls.tags.errors?.['tooManyTags']) {
+                        <p class="text-xs text-red-600">Es sind höchstens 20 Tags erlaubt.</p>
+                        } @else if ((editForm.controls.tags.dirty || editForm.controls.tags.touched) && editForm.controls.tags.errors?.['tagTooLong']) {
+                        <p class="text-xs text-red-600">Ein Tag darf höchstens 50 Zeichen enthalten.</p>
+                        } @else if ((editForm.controls.tags.dirty || editForm.controls.tags.touched) && editForm.controls.tags.errors?.['duplicateTags']) {
                         <p class="text-xs text-red-600">Jeder Tag darf nur einmal vorkommen.</p>
                         } @else if ((editForm.controls.tags.dirty || editForm.controls.tags.touched) && editForm.controls.tags.errors?.['whitespaceInTag']) {
                         <p class="text-xs text-red-600">Tags dürfen keine Leerzeichen enthalten.</p>
@@ -150,8 +156,8 @@
                     }
 
                     <div class="pt-2 flex justify-end">
-                        <button type="submit" [disabled]="isSaving()"
-                            class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-xs px-4 py-2 rounded font-medium transition-colors cursor-pointer">
+                        <button type="submit" [disabled]="editForm.invalid || isSaving()"
+                            class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none text-white text-xs px-4 py-2 rounded font-medium transition-colors cursor-pointer">
                             @if (isSaving()) { Speichere... } @else { Änderungen speichern }
                         </button>
                     </div>

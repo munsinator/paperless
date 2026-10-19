@@ -7,7 +7,7 @@ import { map } from 'rxjs';
 import { Document, DocumentType } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
 import { DomSanitizer } from '@angular/platform-browser';
-import { duplicateTagsValidator, noWhitespaceInTagsValidator } from '../../validators/tag-list.validator';
+import { TagService } from '../../services/tag.service';
 
 @Component({
     selector: 'app-document-detail',
@@ -22,6 +22,7 @@ export class DocumentDetailComponent {
     private readonly fb = inject(FormBuilder);
     private readonly documentService = inject(DocumentService);
     private readonly sanitizer = inject(DomSanitizer);
+    private readonly tagService = inject(TagService);
 
     readonly documentId = toSignal(
         this.route.paramMap.pipe(map(params => params.get('id') ?? '')),
@@ -57,11 +58,8 @@ export class DocumentDetailComponent {
 
     readonly editForm = this.fb.nonNullable.group({
         title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
-        documentType: [''],
-        tags: this.fb.nonNullable.control('', {
-            validators: [duplicateTagsValidator, noWhitespaceInTagsValidator],
-            updateOn: 'change'
-        })
+        documentType: this.fb.nonNullable.control<DocumentType | ''>(''),
+        tags: ['', [this.tagService.validator]]
     });
 
     constructor() {
@@ -71,15 +69,19 @@ export class DocumentDetailComponent {
                 this.editForm.patchValue({
                     title: doc.title,
                     documentType: doc.documentType ?? '',
-                    tags: doc.tags ? doc.tags.join(', ') : ''
+                    tags: this.tagService.formatTags(doc.tags)
                 });
+                this.editForm.markAsPristine();
             }
         });
     }
 
     onSave(): void {
-        this.editForm.markAllAsTouched();
-        if (this.editForm.invalid) return;
+        if (this.editForm.invalid) {
+            this.editForm.markAllAsTouched();
+            return;
+        }
+        if (this.editForm.pristine) return;
 
         const id = this.documentId();
         if (!id) return;
@@ -87,22 +89,19 @@ export class DocumentDetailComponent {
         this.isSaving.set(true);
         this.saveSuccess.set(false);
 
-        const formValues = this.editForm.getRawValue();
-        const tagsArray = formValues.tags
-            .split(',')
-            .map(t => t.trim())
-            .filter(t => t.length > 0);
+        const { title, documentType, tags } = this.editForm.getRawValue();
 
         const updatedData: Partial<Document> = {
-            title: formValues.title,
-            documentType: this.documentTypes.find(item => item.value === formValues.documentType)?.value,
-            tags: tagsArray
+            title: title.trim(),
+            documentType: documentType || undefined,
+            tags: this.tagService.parseTags(tags)
         };
 
         this.documentService.updateDocument(id, updatedData).subscribe({
             next: () => {
                 this.isSaving.set(false);
                 this.saveSuccess.set(true);
+                this.editForm.markAsPristine();
                 this.documentResource.reload();
                 setTimeout(() => this.saveSuccess.set(false), 3000);
             },
