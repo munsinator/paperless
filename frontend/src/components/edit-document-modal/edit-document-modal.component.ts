@@ -1,4 +1,4 @@
-import { Component, input, output, OnInit, inject } from '@angular/core';
+import { Component, effect, input, output, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Document, DocumentType } from '../../models/document.model';
 import { duplicateTagsValidator } from '../../validators/tag-list.validator';
@@ -9,10 +9,9 @@ import { duplicateTagsValidator } from '../../validators/tag-list.validator';
     imports: [ReactiveFormsModule],
     templateUrl: './edit-document-modal.component.html'
 })
-export class EditDocumentModalComponent implements OnInit {
+export class EditDocumentModalComponent {
     private readonly fb = inject(FormBuilder);
 
-    // Inputs & Outputs
     readonly document = input.required<Document>();
     readonly documentTypes: { label: string; value: DocumentType }[] = [
         { label: 'Rechnung', value: 'RECEIPT' },
@@ -27,19 +26,21 @@ export class EditDocumentModalComponent implements OnInit {
     readonly saved = output<Partial<Document>>();
     readonly closed = output<void>();
 
-    // Formular-Definition
+    // 
     readonly editForm = this.fb.nonNullable.group({
-        title: ['', [Validators.required]],
+        title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
         documentType: [''],
         tags: ['', [duplicateTagsValidator]]
     });
 
-    ngOnInit(): void {
-        const doc = this.document();
-        this.editForm.patchValue({
-            title: doc.title,
-            documentType: doc.documentType || '',
-            tags: doc.tags ? doc.tags.join(', ') : ''
+    constructor() {
+        effect(() => {
+            const doc = this.document();
+            this.editForm.patchValue({
+                title: doc.title,
+                documentType: doc.documentType || '',
+                tags: doc.tags ? doc.tags.join(', ') : ''
+            });
         });
     }
 

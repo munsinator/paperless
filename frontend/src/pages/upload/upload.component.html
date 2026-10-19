@@ -92,13 +92,13 @@
                 <label for="doc-tags" class="block text-xs font-medium text-slate-700">Tags (mit Komma trennen)</label>
                 <input id="doc-tags" type="text" formControlName="tags" placeholder="Rechnung, Verträge, 2026"
                     class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
-                @if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['emptyTag']) {
+                @if (uploadForm.controls.tags.dirty && uploadForm.controls.tags.errors?.['emptyTag']) {
                 <p class="text-xs text-red-600">Bitte trennen Sie Tags mit genau einem Komma und lassen Sie keine Tags leer.</p>
-                } @else if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['tooManyTags']) {
+                } @else if (uploadForm.controls.tags.dirty  && uploadForm.controls.tags.errors?.['tooManyTags']) {
                 <p class="text-xs text-red-600">Es sind höchstens 20 Tags erlaubt.</p>
-                } @else if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['tagTooLong']) {
+                } @else if (uploadForm.controls.tags.dirty  && uploadForm.controls.tags.errors?.['tagTooLong']) {
                 <p class="text-xs text-red-600">Ein Tag darf höchstens 50 Zeichen enthalten.</p>
-                } @else if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['duplicateTags']) {
+                } @else if (uploadForm.controls.tags.dirty  && uploadForm.controls.tags.errors?.['duplicateTags']) {
                 <p class="text-xs text-red-600">Jeder Tag darf nur einmal vorkommen.</p>
                 }
             </div>

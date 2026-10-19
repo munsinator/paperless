@@ -5,9 +5,12 @@ export function hasDuplicateTags(value: string): boolean {
     return new Set(tags).size !== tags.length;
 }
 
+// ValidatorFn = Angular Validator; bestimmte Ein- und Ausgaben
 export const duplicateTagsValidator: ValidatorFn = (
+    // das Formular, das geprüft wird
     control: AbstractControl
 ): ValidationErrors | null => {
+    // 
     const value = String(control.value ?? '');
     return hasDuplicateTags(value) ? { duplicateTags: true } : null;
 };

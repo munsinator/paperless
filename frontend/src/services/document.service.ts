@@ -15,6 +15,8 @@ type ApiDocument = {
     fileUrl?: string | null;
 };
 
+// ApiDocument: Rohform aus demm Backend; Document: Aufbereitete Form für die Frontend-Nutzung
+// falls sich bei DocumentType etwas ändert, kann man es leicht anpassen.
 type DocumentResponse = ApiDocument;
 
 export interface CreateDocumentRequest {
@@ -43,11 +45,13 @@ export class DocumentService {
             .pipe(map(document => this.toDocument(document)));
     }
 
+    // nur Metadaten werden erstellt, das Hochladen von Dateien erfolgt separat
     createDocument(documentData: CreateDocumentRequest): Observable<Document> {
         return this.http.post<DocumentResponse>(this.apiUrl, documentData)
             .pipe(map(document => this.toDocument(document)));
     }
 
+    // getrennt, da das Hochladen von Dateien in der Regel einen anderen Endpunkt und eine andere Logik erfordert
     uploadDocument(_file: File, documentData: UploadDocumentRequest): Observable<Document> {
         return this.createDocument(documentData);
     }

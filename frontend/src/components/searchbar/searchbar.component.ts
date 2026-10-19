@@ -10,6 +10,7 @@ import { FormsModule } from '@angular/forms';
 })
 
 export class SearchbarComponent {
+    // kein signal sonst müsste parent (dashboard) schauen, ob sich der Wert geändert hat
     readonly search = output<string>();
     query = '';
 

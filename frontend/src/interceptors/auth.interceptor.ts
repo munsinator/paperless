@@ -8,7 +8,11 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     const authService = inject(AuthService);
     const token = authService.token();
     const apiUrl = environment.apiUrl.replace(/\/$/, '');
+
+    // checkt, ob die Anfrage an das Backend geht (nicht an externe APIs)
     const isBackendRequest = req.url.startsWith(`${apiUrl}/`) || req.url === apiUrl;
+    
+    // checkt, ob es zu auth Endpunkt geht, da logout keinen Sinn macht
     const isAuthRequest = [`${apiUrl}/users`, `${apiUrl}/sessions`]
         .some(path => req.url === path || req.url.startsWith(`${path}/`));
 
