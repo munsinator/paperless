@@ -1,7 +1,7 @@
 import { Component, effect, input, output, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Document, DocumentType } from '../../models/document.model';
-import { duplicateTagsValidator } from '../../validators/tag-list.validator';
+import { duplicateTagsValidator, noWhitespaceInTagsValidator } from '../../validators/tag-list.validator';
 
 @Component({
     selector: 'app-edit-document-modal',
@@ -30,7 +30,10 @@ export class EditDocumentModalComponent {
     readonly editForm = this.fb.nonNullable.group({
         title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
         documentType: [''],
-        tags: this.fb.nonNullable.control('', { validators: [duplicateTagsValidator], updateOn: 'change' })
+        tags: this.fb.nonNullable.control('', {
+            validators: [duplicateTagsValidator, noWhitespaceInTagsValidator],
+            updateOn: 'change'
+        })
     });
 
     constructor() {
@@ -45,6 +48,7 @@ export class EditDocumentModalComponent {
     }
 
     onSave(): void {
+        this.editForm.markAllAsTouched();
         if (this.editForm.invalid) return;
 
         const formValues = this.editForm.getRawValue();

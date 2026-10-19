@@ -101,11 +101,11 @@
                         </label>
                         <input id="detail-title" type="text" formControlName="title"
                             class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300" />
-                        @if (editForm.controls.title.dirty && editForm.controls.title.errors?.['required']) {
+                        @if ((editForm.controls.title.dirty || editForm.controls.title.touched) && editForm.controls.title.errors?.['required']) {
                         <p class="text-xs text-red-600">Bitte geben Sie einen Titel ein.</p>
-                        } @else if (editForm.controls.title.dirty && editForm.controls.title.errors?.['pattern']) {
+                        } @else if ((editForm.controls.title.dirty || editForm.controls.title.touched) && editForm.controls.title.errors?.['pattern']) {
                         <p class="text-xs text-red-600">Der Titel darf nicht nur aus Leerzeichen bestehen.</p>
-                        } @else if (editForm.controls.title.dirty && editForm.controls.title.errors?.['maxlength']) {
+                        } @else if ((editForm.controls.title.dirty || editForm.controls.title.touched) && editForm.controls.title.errors?.['maxlength']) {
                         <p class="text-xs text-red-600">Der Titel darf höchstens 200 Zeichen enthalten.</p>
                         }
                     </div>
@@ -129,8 +129,10 @@
                         <input id="detail-tags" type="text" formControlName="tags"
                             placeholder="Rechnung, Verträge, 2026"
                             class="w-full bg-transparent text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition focus:outline-none focus:border-slate-400 hover:border-slate-300" />
-                        @if (editForm.controls.tags.dirty && editForm.controls.tags.errors?.['duplicateTags']) {
+                        @if ((editForm.controls.tags.dirty || editForm.controls.tags.touched) && editForm.controls.tags.errors?.['duplicateTags']) {
                         <p class="text-xs text-red-600">Jeder Tag darf nur einmal vorkommen.</p>
+                        } @else if ((editForm.controls.tags.dirty || editForm.controls.tags.touched) && editForm.controls.tags.errors?.['whitespaceInTag']) {
+                        <p class="text-xs text-red-600">Tags dürfen keine Leerzeichen enthalten.</p>
                         }
                     </div>
 
@@ -148,7 +150,7 @@
                     }
 
                     <div class="pt-2 flex justify-end">
-                        <button type="submit" [disabled]="editForm.invalid || isSaving()"
+                        <button type="submit" [disabled]="isSaving()"
                             class="bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-white text-xs px-4 py-2 rounded font-medium transition-colors cursor-pointer">
                             @if (isSaving()) { Speichere... } @else { Änderungen speichern }
                         </button>

@@ -1,5 +1,10 @@
 import { FormControl } from '@angular/forms';
-import { duplicateTagsValidator, hasDuplicateTags } from './tag-list.validator';
+import {
+    duplicateTagsValidator,
+    hasDuplicateTags,
+    hasWhitespaceInTags,
+    noWhitespaceInTagsValidator
+} from './tag-list.validator';
 
 describe('duplicateTagsValidator', () => {
     it('detects repeated tags regardless of whitespace and letter case', () => {
@@ -18,5 +23,24 @@ describe('duplicateTagsValidator', () => {
         const control = new FormControl('Studium, STUDIUM', duplicateTagsValidator);
 
         expect(control.errors).toEqual({ duplicateTags: true });
+    });
+
+    it('detects whitespace inside a tag but allows spaces around comma-separated tags', () => {
+        expect(hasWhitespaceInTags('Bank Statement, Rechnung')).toBe(true);
+        expect(hasWhitespaceInTags('BankStatement, Rechnung')).toBe(false);
+    });
+
+    it('updates the duplicate error as the value changes', () => {
+        const control = new FormControl('Studium', duplicateTagsValidator);
+
+        control.setValue('Studium, Studium');
+
+        expect(control.errors).toEqual({ duplicateTags: true });
+    });
+
+    it('marks tags containing internal whitespace invalid', () => {
+        const control = new FormControl('Bank Statement', noWhitespaceInTagsValidator);
+
+        expect(control.errors).toEqual({ whitespaceInTag: true });
     });
 });

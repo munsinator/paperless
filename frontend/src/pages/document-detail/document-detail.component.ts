@@ -7,7 +7,7 @@ import { map } from 'rxjs';
 import { Document, DocumentType } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
 import { DomSanitizer } from '@angular/platform-browser';
-import { duplicateTagsValidator } from '../../validators/tag-list.validator';
+import { duplicateTagsValidator, noWhitespaceInTagsValidator } from '../../validators/tag-list.validator';
 
 @Component({
     selector: 'app-document-detail',
@@ -58,7 +58,10 @@ export class DocumentDetailComponent {
     readonly editForm = this.fb.nonNullable.group({
         title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
         documentType: [''],
-        tags: this.fb.nonNullable.control('', { validators: [duplicateTagsValidator], updateOn: 'change' })
+        tags: this.fb.nonNullable.control('', {
+            validators: [duplicateTagsValidator, noWhitespaceInTagsValidator],
+            updateOn: 'change'
+        })
     });
 
     constructor() {
@@ -75,6 +78,7 @@ export class DocumentDetailComponent {
     }
 
     onSave(): void {
+        this.editForm.markAllAsTouched();
         if (this.editForm.invalid) return;
 
         const id = this.documentId();

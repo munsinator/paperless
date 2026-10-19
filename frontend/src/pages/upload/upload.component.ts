@@ -1,11 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DocumentService, UploadDocumentRequest } from '../../services/document.service';
 import { DocumentType } from '../../models/document.model';
-import { hasDuplicateTags } from '../../validators/tag-list.validator';
+import { hasDuplicateTags, hasWhitespaceInTags } from '../../validators/tag-list.validator';
 
 @Component({
     selector: 'app-upload',
@@ -43,17 +42,6 @@ export class UploadComponent {
         documentType: [''],
         tags: this.fb.nonNullable.control('', { validators: [this.tagsValidator], updateOn: 'change' })
     });
-    private readonly formStatus = toSignal(this.uploadForm.statusChanges, {
-        initialValue: this.uploadForm.status
-    });
-
-    readonly isFormValid = computed(() => {
-        return this.selectedFile() !== null
-            && this.formStatus() === 'VALID'
-            && !this.isValidatingFile()
-            && !this.isSubmitting();
-    });
-
     readonly formattedFileSize = computed(() => {
         const file = this.selectedFile();
         if (!file) return '0 KB';
@@ -137,9 +125,14 @@ export class UploadComponent {
     }
 
     onUpload(): void {
-        if (!this.isFormValid()) return;
+        this.uploadForm.markAllAsTouched();
+        if (this.uploadForm.invalid || this.isValidatingFile() || this.isSubmitting()) return;
+
         const file = this.selectedFile();
-        if (!file) return;
+        if (!file) {
+            this.errorMessage.set('Bitte wählen Sie eine PDF-Datei aus.');
+            return;
+        }
 
         const formValues = this.uploadForm.getRawValue();
         const title = formValues.title.trim();
@@ -189,6 +182,7 @@ export class UploadComponent {
         if (tags.length > 20) return { tooManyTags: true };
         if (tags.some(tag => tag.length > 50)) return { tagTooLong: true };
         if (hasDuplicateTags(value)) return { duplicateTags: true };
+        if (hasWhitespaceInTags(value)) return { whitespaceInTag: true };
         return null;
     }
 
