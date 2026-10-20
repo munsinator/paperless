@@ -1,10 +1,10 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DocumentService, UploadDocumentRequest } from '../../services/document.service';
 import { DocumentType } from '../../models/document.model';
 import { TagService } from '../../services/tag.service';
+import { toErrorMessage } from '../../utils/http-error';
 
 @Component({
     selector: 'app-upload',
@@ -158,29 +158,8 @@ export class UploadComponent {
             error: (error: unknown) => {
                 console.error('Fehler beim Hochladen des Dokuments:', error);
                 this.isSubmitting.set(false);
-                this.errorMessage.set(this.getUploadErrorMessage(error));
+                this.errorMessage.set(toErrorMessage(error, 'upload'));
             }
         });
-    }
-
-    private getUploadErrorMessage(error: unknown): string {
-        if (!(error instanceof HttpErrorResponse)) {
-            return 'Der Upload ist fehlgeschlagen. Bitte versuchen Sie es erneut.';
-        }
-        if (error.status === 0) return 'Der Server ist nicht erreichbar. Bitte versuchen Sie es später erneut.';
-        if (error.status === 401 || error.status === 403) {
-            return 'Sie sind nicht berechtigt, dieses Dokument hochzuladen. Bitte melden Sie sich erneut an.';
-        }
-        if (error.status === 400 || error.status === 422) {
-            return 'Der Server hat die Dokumentdaten abgelehnt. Bitte prüfen Sie Titel, Kategorie und Tags.';
-        }
-        if (error.status === 404 || error.status === 405 || error.status === 415) {
-            return 'Der Multipart-Upload-Endpunkt ist noch nicht im Backend implementiert.';
-        }
-        if (error.status === 413) return 'Die Datei ist für den Server zu groß.';
-        if (error.status >= 500) return 'Beim Speichern des Dokuments ist ein Serverfehler aufgetreten.';
-
-        const serverMessage = typeof error.error?.message === 'string' ? error.error.message : null;
-        return serverMessage || `Upload fehlgeschlagen (HTTP ${error.status}).`;
     }
 }

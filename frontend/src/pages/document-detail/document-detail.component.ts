@@ -8,6 +8,8 @@ import { Document, DocumentType } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
 import { DomSanitizer } from '@angular/platform-browser';
 import { TagService } from '../../services/tag.service';
+import { NotificationService } from '../../services/notification.service';
+import { toErrorMessage } from '../../utils/http-error';
 
 @Component({
     selector: 'app-document-detail',
@@ -23,6 +25,7 @@ export class DocumentDetailComponent {
     private readonly documentService = inject(DocumentService);
     private readonly sanitizer = inject(DomSanitizer);
     private readonly tagService = inject(TagService);
+    private readonly notifications = inject(NotificationService);
 
     readonly documentId = toSignal(
         this.route.paramMap.pipe(map(params => params.get('id') ?? '')),
@@ -35,6 +38,10 @@ export class DocumentDetailComponent {
     });
 
     readonly document = this.documentResource.value;
+    readonly loadErrorMessage = computed(() => {
+        const error = this.documentResource.error();
+        return error ? toErrorMessage(this.unwrap(error), 'load') : null;
+    });
 
     readonly activeTab = signal<'metadata' | 'ai'>('metadata');
     readonly isSaving = signal<boolean>(false);
@@ -106,8 +113,8 @@ export class DocumentDetailComponent {
                 setTimeout(() => this.saveSuccess.set(false), 3000);
             },
             error: (err) => {
-                console.error('Fehler beim Speichern:', err);
                 this.isSaving.set(false);
+                this.notifications.httpError(err, 'save');
             }
         });
     }
@@ -123,9 +130,14 @@ export class DocumentDetailComponent {
                 this.router.navigate(['/dashboard']);
             },
             error: (err) => {
-                console.error('Fehler beim Löschen:', err);
                 this.isDeleting.set(false);
+                this.notifications.httpError(err, 'delete');
             }
         });
+    }
+
+    // rxResource verpackt Fehler manchmal in einen Wrapper-Error mit dem Original in cause
+    private unwrap(error: unknown): unknown {
+        return error instanceof Error && error.cause ? error.cause : error;
     }
 }

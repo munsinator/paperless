@@ -25,6 +25,12 @@
         </div>
     </div>
 
+    @if (loadErrorMessage(); as loadError) {
+    <div role="alert" class="p-3 bg-red-50 border border-red-200 rounded-md text-xs text-red-800 font-medium">
+        {{ loadError }}
+    </div>
+    }
+
     <!-- Main Grid: PDF Vorschau & Metadaten/AI Box -->
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
 

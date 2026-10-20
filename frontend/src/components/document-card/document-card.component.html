@@ -50,6 +50,6 @@
 </div>
 
 @if (isEditModalOpen()) {
-<app-edit-document-modal [document]="document()" (saved)="onSaveEdit($event)" (closed)="closeEditModal()">
+<app-edit-document-modal [document]="document()" [isSaving]="isSavingEdit()" (saved)="onSaveEdit($event)" (closed)="closeEditModal()">
 </app-edit-document-modal>
 }

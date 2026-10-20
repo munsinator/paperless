@@ -67,9 +67,9 @@
                     class="px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs rounded font-medium transition-colors">
                     Abbrechen
                 </button>
-                <button type="submit" [disabled]="editForm.invalid"
+                <button type="submit" [disabled]="editForm.invalid || isSaving()"
                     class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none text-white text-xs rounded font-medium transition-colors">
-                    Speichern
+                    {{ isSaving() ? 'Speichere...' : 'Speichern' }}
                 </button>
             </div>
 

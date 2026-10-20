@@ -24,6 +24,7 @@ export class EditDocumentModalComponent {
         { label: 'Sonstiges', value: 'OTHER' }
     ];
 
+    readonly isSaving = input(false);
     readonly saved = output<Partial<Document>>();
     readonly closed = output<void>();
 
