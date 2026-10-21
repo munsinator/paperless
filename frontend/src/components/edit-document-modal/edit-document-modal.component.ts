@@ -1,6 +1,6 @@
 import { Component, input, output, OnInit, inject } from '@angular/core';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Document, DocumentType } from '../../models/document.model';
+import { Document, DOCUMENT_TYPE_OPTIONS } from '../../models/document.model';
 import { duplicateTagsValidator } from '../../validators/tag-list.validator';
 
 @Component({
@@ -14,15 +14,7 @@ export class EditDocumentModalComponent implements OnInit {
 
     // Inputs & Outputs
     readonly document = input.required<Document>();
-    readonly documentTypes: { label: string; value: DocumentType }[] = [
-        { label: 'Rechnung', value: 'RECEIPT' },
-        { label: 'Vertrag', value: 'CONTRACT' },
-        { label: 'Bank / Finanzen', value: 'BANK_STATEMENT' },
-        { label: 'Zertifikat', value: 'CERTIFICATE' },
-        { label: 'Notiz', value: 'NOTE' },
-        { label: 'Reisepass', value: 'PASSPORT' },
-        { label: 'Sonstiges', value: 'OTHER' }
-    ];
+    readonly documentTypes = DOCUMENT_TYPE_OPTIONS;
 
     readonly saved = output<Partial<Document>>();
     readonly closed = output<void>();

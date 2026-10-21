@@ -1,6 +1,6 @@
 import { HttpInterceptorFn, HttpResponse } from '@angular/common/http';
 import { delay, of } from 'rxjs';
-import { Document } from '../models/document.model';
+import { Document, DocumentType } from '../models/document.model';
 import { environment } from '../environment';
 
 // Fake In-Memory Datenbank
@@ -8,7 +8,7 @@ let mockDocuments: Document[] = [
     {
         id: 'doc-001',
         title: 'Mietvertrag_Wohnung_2026.pdf',
-        documentType: 'CONTRACT',
+        documentType: DocumentType.CONTRACT,
         createdAt: '2026-10-01T10:00:00Z',
         tags: ['Wohnen', 'Vertrag'],
         summary: 'Mietvertrag für die Wohnung ab 01.10.2026.',
@@ -17,7 +17,7 @@ let mockDocuments: Document[] = [
     {
         id: 'doc-002',
         title: 'Stromrechnung_Q3_2026.pdf',
-        documentType: 'RECEIPT',
+        documentType: DocumentType.RECEIPT,
         createdAt: '2026-09-28T14:30:00Z',
         tags: ['Finanzen', 'Rechnung'],
         summary: 'Stromrechnung für Q3 2026 über 142,50 €.',

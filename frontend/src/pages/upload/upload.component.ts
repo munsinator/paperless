@@ -4,8 +4,8 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import { FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DocumentService, UploadDocumentRequest } from '../../services/document.service';
-import { DocumentType } from '../../models/document.model';
 import { hasDuplicateTags } from '../../validators/tag-list.validator';
+import { DOCUMENT_TYPE_OPTIONS, DocumentType, getDocumentTypeLabel } from '../../models/document.model';
 
 @Component({
     selector: 'app-upload',
@@ -26,15 +26,7 @@ export class UploadComponent {
     readonly errorMessage = signal<string>('');
     readonly successMessage = signal<string>('');
 
-    readonly documentTypes: { label: string; value: DocumentType }[] = [
-        { label: 'Rechnung', value: 'RECEIPT' },
-        { label: 'Vertrag', value: 'CONTRACT' },
-        { label: 'Bank / Finanzen', value: 'BANK_STATEMENT' },
-        { label: 'Zertifikat', value: 'CERTIFICATE' },
-        { label: 'Notiz', value: 'NOTE' },
-        { label: 'Reisepass', value: 'PASSPORT' },
-        { label: 'Sonstiges', value: 'OTHER' }
-    ];
+    readonly documentTypes = DOCUMENT_TYPE_OPTIONS;
 
     private readonly fb = new FormBuilder();
     private readonly tagsValidator: ValidatorFn = control => this.validateTags(String(control.value));
@@ -143,7 +135,7 @@ export class UploadComponent {
 
         const formValues = this.uploadForm.getRawValue();
         const title = formValues.title.trim();
-        const documentType = this.documentTypes.find(item => item.value === formValues.documentType)?.value;
+        const documentType = this.documentTypes.find(type => type.value === formValues.documentType)?.value;
         const request: UploadDocumentRequest = {
             title,
             type: documentType,
