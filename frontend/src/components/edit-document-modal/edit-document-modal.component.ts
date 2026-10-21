@@ -28,7 +28,6 @@ export class EditDocumentModalComponent {
     readonly saved = output<Partial<Document>>();
     readonly closed = output<void>();
 
-    // 
     readonly editForm = this.fb.nonNullable.group({
         title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
         documentType: this.fb.nonNullable.control<DocumentType | ''>(''),

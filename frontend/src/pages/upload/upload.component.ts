@@ -13,8 +13,7 @@ const SOURCE = 'UploadComponent';
     selector: 'app-upload',
     standalone: true,
     imports: [ReactiveFormsModule],
-    templateUrl: './upload.component.html',
-    styleUrl: './upload.component.css'
+    templateUrl: './upload.component.html'
 })
 export class UploadComponent {
     private static readonly maxFileSize = 15 * 1024 * 1024;

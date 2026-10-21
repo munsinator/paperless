@@ -15,8 +15,7 @@ import { toErrorMessage } from '../../utils/http-error';
     selector: 'app-document-detail',
     standalone: true,
     imports: [RouterLink, DatePipe, ReactiveFormsModule],
-    templateUrl: './document-detail.component.html',
-    styleUrl: './document-detail.component.css'
+    templateUrl: './document-detail.component.html'
 })
 export class DocumentDetailComponent {
     private readonly route = inject(ActivatedRoute);

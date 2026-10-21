@@ -18,10 +18,8 @@ type ApiDocument = {
     fileUrl?: string | null;
 };
 
-// ApiDocument: Rohform aus demm Backend; Document: Aufbereitete Form für die Frontend-Nutzung
+// ApiDocument: Rohform aus dem Backend; Document: Aufbereitete Form für die Frontend-Nutzung
 // falls sich bei DocumentType etwas ändert, kann man es leicht anpassen.
-type DocumentResponse = ApiDocument;
-
 export interface CreateDocumentRequest {
     title: string;
     type?: DocumentType;
@@ -41,20 +39,13 @@ export class DocumentService {
     getDocuments(query = ''): Observable<Document[]> {
         const params = query ? new HttpParams().set('query', query) : undefined;
         this.logger.debug(SOURCE,`Loading documents (search: ${query !== ''})`);
-        return this.http.get<DocumentResponse[]>(this.apiUrl, { params })
+        return this.http.get<ApiDocument[]>(this.apiUrl, { params })
             .pipe(map(documents => documents.map(document => this.toDocument(document))));
     }
 
     getDocumentById(id: string): Observable<Document> {
         this.logger.debug(SOURCE,`Loading document ${id}`);
-        return this.http.get<DocumentResponse>(`${this.apiUrl}/${encodeURIComponent(id)}`)
-            .pipe(map(document => this.toDocument(document)));
-    }
-
-    // nur Metadaten werden erstellt, das Hochladen von Dateien erfolgt separat
-    createDocument(documentData: CreateDocumentRequest): Observable<Document> {
-        this.logger.info(SOURCE,`Creating document '${documentData.title}'`);
-        return this.http.post<DocumentResponse>(this.apiUrl, documentData)
+        return this.http.get<ApiDocument>(`${this.apiUrl}/${encodeURIComponent(id)}`)
             .pipe(map(document => this.toDocument(document)));
     }
 
@@ -67,7 +58,7 @@ export class DocumentService {
         documentData.tags.forEach(tag => formData.append('tags', tag));
 
         this.logger.info(SOURCE,`Uploading '${file.name}' (${file.size} bytes)`);
-        return this.http.post<DocumentResponse>(this.apiUrl, formData)
+        return this.http.post<ApiDocument>(this.apiUrl, formData)
             .pipe(
                 tap(document => this.logger.info(SOURCE,`Upload finished, document ${document.id} created`)),
                 map(document => this.toDocument(document))
@@ -81,7 +72,7 @@ export class DocumentService {
         if (documentData.tags !== undefined) request.tags = documentData.tags;
 
         this.logger.info(SOURCE,`Updating document ${id}`);
-        return this.http.put<DocumentResponse>(`${this.apiUrl}/${encodeURIComponent(id)}`, request)
+        return this.http.put<ApiDocument>(`${this.apiUrl}/${encodeURIComponent(id)}`, request)
             .pipe(map(document => this.toDocument(document)));
     }
 
@@ -90,17 +81,7 @@ export class DocumentService {
         return this.http.delete<void>(`${this.apiUrl}/${encodeURIComponent(id)}`);
     }
 
-    getDocumentData(id: string): Observable<Blob> {
-        return this.http.get(`${this.apiUrl}/${encodeURIComponent(id)}/data`, {
-            responseType: 'blob'
-        });
-    }
-
-    deleteDocumentData(id: string): Observable<void> {
-        return this.http.delete<void>(`${this.apiUrl}/${encodeURIComponent(id)}/data`);
-    }
-
-    private toDocument(response: DocumentResponse): Document {
+    private toDocument(response: ApiDocument): Document {
         return {
             id: response.id,
             title: response.title,

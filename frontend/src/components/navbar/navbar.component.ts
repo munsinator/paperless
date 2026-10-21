@@ -13,8 +13,7 @@ interface NavbarItem {
     selector: 'app-navbar',
     standalone: true,
     imports: [RouterLink],
-    templateUrl: './navbar.component.html',
-    styleUrl: './navbar.component.css'
+    templateUrl: './navbar.component.html'
 })
 
 export class NavbarComponent {

@@ -18,8 +18,7 @@ const SOURCE = 'AuthComponent';
   selector: 'app-auth',
   standalone: true,
   imports: [ReactiveFormsModule],
-  templateUrl: './auth.component.html',
-  styleUrl: './auth.component.css'
+  templateUrl: './auth.component.html'
 })
 export class AuthComponent {
   private readonly authService = inject(AuthService);
