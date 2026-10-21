@@ -116,3 +116,11 @@ export class AuthComponent {
       : 'Registrierung fehlgeschlagen. Bitte versuche es erneut.';
   }
 }
+
+/**
+ * Registrierung:
+ * onSubmit() -> authService.register() -> http.post() -> authInterceptor -> nginx -> SecurityConfig mit CorsFilter & JwtAuthFilter (hier unötig) -> UserController -> UserService -> UserRepository -> Datenbank
+ * 
+ * Login:
+ * onSubmit() -> authService.login() -> http.post() -> authInterceptor -> nginx -> SecurityConfig mit CorsFilter & JwtAuthFilter (hier unötig) -> SessionController -> authenticationManager.authenticate() -> DaoAuthenticationProvider -> UserService.loadUserByUsername() -> UserRepository.findById() -> Datenbank -> JwtService.generateToken() -> zurück zu authService.login() -> this._token.set(token) -> localStorage.setItem(TOKEN_KEY, token)
+*/

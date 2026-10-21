@@ -6,6 +6,7 @@ import { LoggerService } from '../services/logger.service';
 const SOURCE = 'AuthGuard';
 
 // CanActivateFn ist eine Funktion, die Angular aufruft, bevor eine Route geöffnet wird
+// z.B. verhindern, dass ein unangemeldeter Benutzer /dashboard öffnet
 export const authGuard: CanActivateFn = (_route, state) => {
     const authService = inject(AuthService);
     const router = inject(Router);

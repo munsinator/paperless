@@ -48,6 +48,7 @@ export class AuthService {
                 this.logout();
                 return;
             }
+            // Wartezeit auf den maximal vorgesehenen 32-Bit-Timeout-Wert begrenzen
             timer = setTimeout(schedule, Math.min(remaining, 2 ** 31 - 1));
         };
         schedule();
@@ -99,8 +100,10 @@ export class AuthService {
 
     private decodePayload(token: string): JwtPayload | null {
         try {
+
             const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
             const json = decodeURIComponent(
+                // decodiert
                 atob(base64)
                     .split('')
                     .map(c => '%' + c.charCodeAt(0).toString(16).padStart(2, '0'))

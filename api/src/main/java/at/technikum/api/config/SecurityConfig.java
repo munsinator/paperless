@@ -22,6 +22,10 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.List;
 
+/**
+ * Zentrale Sicherheitsregeln
+ * Ohne dem wüsste Spring Security nicht, welche Anfragen öffentlich sein sollen
+ */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -65,6 +69,12 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /**
+     * Komponente, die bei deinem Login die eigentliche Prüfung von Benutzername und Passwort übernimmt
+     * @param userService
+     * @param passwordEncoder
+     * @return
+     */
     @Bean
     DaoAuthenticationProvider authenticationProvider(UserService userService, PasswordEncoder passwordEncoder) {
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userService);
@@ -77,3 +87,10 @@ public class SecurityConfig {
         return new ProviderManager(authenticationProvider);
     }
 }
+
+/**
+ * Content-Type	Welches Format haben die gesendeten Daten?	application/json
+ * Accept	Welche Art von Antwort möchte der Client erhalten?	application/json
+ * X-Requested-With	Kennzeichnet häufig eine Anfrage, die von JavaScript bzw. einer Webanwendung ausgelöst wurde.	XMLHttpRequest
+ * Authorization	Enthält deine Anmeldeinformationen, hier das JWT.	Bearer eyJ...
+ */

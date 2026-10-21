@@ -13,11 +13,15 @@ import javax.crypto.SecretKey;
 import java.time.Instant;
 import java.util.Date;
 
+/**
+ * Eigentliche Token Logik
+ */
 @Service
 public class JwtService {
 
     private static final long TOKEN_LIFETIME_MILLIS = 60 * 60 * 1000L;
 
+    // geheimer Schlüssel wird gebraucht, um JWT zu signieren und später Signatur zu überprüfen
     @Value("${jwt.secret:}")
     private String secret;
 
