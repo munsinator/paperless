@@ -46,6 +46,8 @@ public class SecurityConfig {
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/users", "/sessions").permitAll()
+                        // Error-Dispatch (400/409/... aus sendError) darf nicht zu 401 werden; JwtAuthFilter läuft dort nicht
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                 .build();

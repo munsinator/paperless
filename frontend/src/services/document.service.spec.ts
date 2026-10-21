@@ -1,6 +1,7 @@
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { TestBed } from '@angular/core/testing';
+import { DocumentType } from '../models/document.model';
 import { DocumentService } from './document.service';
 
 describe('DocumentService', () => {
@@ -18,7 +19,7 @@ describe('DocumentService', () => {
     it('uploads the pdf and metadata as multipart form data', () => {
         const file = new File(['%PDF-1.7'], 'rechnung.pdf', { type: 'application/pdf' });
 
-        service.uploadDocument(file, { title: 'Rechnung', type: 'RECEIPT', tags: ['a', 'b'] }).subscribe();
+        service.uploadDocument(file, { title: 'Rechnung', type: DocumentType.RECEIPT, tags: ['a', 'b'] }).subscribe();
 
         const req = httpMock.expectOne('/api/document');
         expect(req.request.method).toBe('POST');

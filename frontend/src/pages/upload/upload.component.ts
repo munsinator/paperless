@@ -5,7 +5,7 @@ import { DocumentService, UploadDocumentRequest } from '../../services/document.
 import { DocumentFormService } from '../../services/document-form.service';
 import { toErrorMessage } from '../../utils/http-error';
 import { LoggerService } from '../../services/logger.service';
-import { DOCUMENT_TYPE_OPTIONS, DocumentType, getDocumentTypeLabel } from '../../models/document.model';
+import { DOCUMENT_TYPE_OPTIONS } from '../../models/document.model';
 
 const SOURCE = 'UploadComponent';
 
