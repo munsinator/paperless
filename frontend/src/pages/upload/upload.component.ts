@@ -5,6 +5,9 @@ import { DocumentService, UploadDocumentRequest } from '../../services/document.
 import { DocumentType } from '../../models/document.model';
 import { TagService } from '../../services/tag.service';
 import { toErrorMessage } from '../../utils/http-error';
+import { LoggerService } from '../../services/logger.service';
+
+const SOURCE = 'UploadComponent';
 
 @Component({
     selector: 'app-upload',
@@ -18,6 +21,7 @@ export class UploadComponent {
     private readonly documentService = inject(DocumentService);
     private readonly router = inject(Router);
     private readonly tagService = inject(TagService);
+    private readonly logger = inject(LoggerService);
 
     readonly selectedFile = signal<File | null>(null);
     readonly isDragging = signal<boolean>(false);
@@ -82,9 +86,11 @@ export class UploadComponent {
         this.errorMessage.set('');
         this.successMessage.set('');
         this.selectedFile.set(null);
+        this.logger.debug(SOURCE,`File selected: '${file.name}' (${file.size} bytes, ${file.type || 'unknown type'})`);
 
         if (!file.name.toLocaleLowerCase().endsWith('.pdf')
             || (file.type && file.type !== 'application/pdf')) {
+            this.logger.warn(SOURCE,`Rejected '${file.name}': not a PDF`);
             this.errorMessage.set('Bitte wählen Sie eine PDF-Datei aus.');
             return;
         }
@@ -112,7 +118,7 @@ export class UploadComponent {
                 this.uploadForm.patchValue({ title: file.name.replace(/\.pdf$/i, '') });
             }
         } catch (error) {
-            console.error('PDF-Datei konnte nicht gelesen werden:', error);
+            this.logger.error(SOURCE,`Could not read file '${file.name}'`, error);
             this.errorMessage.set('Die ausgewählte Datei konnte nicht geprüft werden.');
         } finally {
             this.isValidatingFile.set(false);
@@ -156,7 +162,7 @@ export class UploadComponent {
                 }, 1000);
             },
             error: (error: unknown) => {
-                console.error('Fehler beim Hochladen des Dokuments:', error);
+                this.logger.error(SOURCE,'Upload failed', error);
                 this.isSubmitting.set(false);
                 this.errorMessage.set(toErrorMessage(error, 'upload'));
             }

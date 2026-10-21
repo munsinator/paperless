@@ -1,7 +1,10 @@
 import { inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, map } from 'rxjs';
+import { Observable, map, tap } from 'rxjs';
 import { environment } from '../environment';
+import { LoggerService } from './logger.service';
+
+const SOURCE = 'DocumentService';
 import { Document, DocumentType } from '../models/document.model';
 
 type ApiDocument = {
@@ -32,21 +35,25 @@ export interface UploadDocumentRequest extends CreateDocumentRequest {
 @Injectable({ providedIn: 'root' })
 export class DocumentService {
     private readonly http = inject(HttpClient);
+    private readonly logger = inject(LoggerService);
     private readonly apiUrl = `${environment.apiUrl.replace(/\/$/, '')}/document`;
 
     getDocuments(query = ''): Observable<Document[]> {
         const params = query ? new HttpParams().set('query', query) : undefined;
+        this.logger.debug(SOURCE,`Loading documents (search: ${query !== ''})`);
         return this.http.get<DocumentResponse[]>(this.apiUrl, { params })
             .pipe(map(documents => documents.map(document => this.toDocument(document))));
     }
 
     getDocumentById(id: string): Observable<Document> {
+        this.logger.debug(SOURCE,`Loading document ${id}`);
         return this.http.get<DocumentResponse>(`${this.apiUrl}/${encodeURIComponent(id)}`)
             .pipe(map(document => this.toDocument(document)));
     }
 
     // nur Metadaten werden erstellt, das Hochladen von Dateien erfolgt separat
     createDocument(documentData: CreateDocumentRequest): Observable<Document> {
+        this.logger.info(SOURCE,`Creating document '${documentData.title}'`);
         return this.http.post<DocumentResponse>(this.apiUrl, documentData)
             .pipe(map(document => this.toDocument(document)));
     }
@@ -59,8 +66,12 @@ export class DocumentService {
         if (documentData.type) formData.append('type', documentData.type);
         documentData.tags.forEach(tag => formData.append('tags', tag));
 
+        this.logger.info(SOURCE,`Uploading '${file.name}' (${file.size} bytes)`);
         return this.http.post<DocumentResponse>(this.apiUrl, formData)
-            .pipe(map(document => this.toDocument(document)));
+            .pipe(
+                tap(document => this.logger.info(SOURCE,`Upload finished, document ${document.id} created`)),
+                map(document => this.toDocument(document))
+            );
     }
 
     updateDocument(id: string, documentData: Partial<Document>): Observable<Document> {
@@ -69,11 +80,13 @@ export class DocumentService {
         if (documentData.documentType !== undefined) request.type = documentData.documentType;
         if (documentData.tags !== undefined) request.tags = documentData.tags;
 
+        this.logger.info(SOURCE,`Updating document ${id}`);
         return this.http.put<DocumentResponse>(`${this.apiUrl}/${encodeURIComponent(id)}`, request)
             .pipe(map(document => this.toDocument(document)));
     }
 
     deleteDocument(id: string): Observable<void> {
+        this.logger.info(SOURCE,`Deleting document ${id}`);
         return this.http.delete<void>(`${this.apiUrl}/${encodeURIComponent(id)}`);
     }
 

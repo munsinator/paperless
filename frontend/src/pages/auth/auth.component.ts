@@ -10,6 +10,9 @@ import {
 } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { LoggerService } from '../../services/logger.service';
+
+const SOURCE = 'AuthComponent';
 
 @Component({
   selector: 'app-auth',
@@ -23,6 +26,7 @@ export class AuthComponent {
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
   private readonly fb = inject(FormBuilder);
+  private readonly logger = inject(LoggerService);
 
   readonly isLogin = signal(true);
   readonly isSubmitting = signal(false);
@@ -86,6 +90,7 @@ export class AuthComponent {
         this.successMessage.set(message || 'Account erstellt. Du kannst dich jetzt anmelden.');
       }
     } catch (error) {
+      this.logger.warn(SOURCE,`${this.isLogin() ? 'Login' : 'Registration'} failed for '${username}'`);
       this.errorMessage.set(this.toMessage(error));
     } finally {
       this.isSubmitting.set(false);

@@ -5,8 +5,10 @@ import { Router } from '@angular/router';
 import { firstValueFrom } from 'rxjs';
 import { environment } from '../environment';
 import { AuthDto } from '../models/user.model';
+import { LoggerService } from './logger.service';
 
 const TOKEN_KEY = 'token';
+const SOURCE = 'AuthService';
 
 interface JwtPayload {
     sub?: string;
@@ -17,6 +19,7 @@ interface JwtPayload {
 export class AuthService {
     private readonly http = inject(HttpClient);
     private readonly router = inject(Router);
+    private readonly logger = inject(LoggerService);
     private readonly isBrowser = isPlatformBrowser(inject(PLATFORM_ID));
     private readonly apiUrl = `${environment.apiUrl}`;
 
@@ -41,6 +44,7 @@ export class AuthService {
             // remaining = Zeit bis zum Ablauf in ms
             const remaining = expiration * 1000 - Date.now();
             if (remaining <= 0) {
+                this.logger.info(SOURCE,'Token expired, logging out');
                 this.logout();
                 return;
             }
@@ -66,20 +70,24 @@ export class AuthService {
     });
 
     register(credentials: AuthDto): Promise<string> {
+        this.logger.info(SOURCE,`Registering user '${credentials.username}'`);
         return firstValueFrom(
             this.http.post(`${this.apiUrl}/users`, credentials, { responseType: 'text' })
         );
     }
 
     async login(credentials: AuthDto): Promise<void> {
+        this.logger.info(SOURCE,`Login attempt for '${credentials.username}'`);
         const { token } = await firstValueFrom(
             this.http.post<{ token: string }>(`${this.apiUrl}/sessions`, credentials)
         );
         this._token.set(token);
         if (this.isBrowser) localStorage.setItem(TOKEN_KEY, token);
+        this.logger.info(SOURCE,'Login successful');
     }
 
     logout(redirect = true): void {
+        this.logger.info(SOURCE,'Logged out');
         this._token.set(null);
         if (this.isBrowser) localStorage.removeItem(TOKEN_KEY);
         if (redirect) this.router.navigate(['/auth']);
@@ -100,6 +108,7 @@ export class AuthService {
             );
             return JSON.parse(json) as JwtPayload;
         } catch {
+            this.logger.warn(SOURCE,'Stored token could not be decoded');
             return null;
         }
     }
