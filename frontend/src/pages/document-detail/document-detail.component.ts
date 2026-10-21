@@ -4,7 +4,7 @@ import { DatePipe } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
-import { DocumentType } from '../../models/document.model';
+import { Document, DOCUMENT_TYPE_OPTIONS } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
 import { DomSanitizer } from '@angular/platform-browser';
 import { DocumentFormService } from '../../services/document-form.service';
@@ -46,15 +46,7 @@ export class DocumentDetailComponent {
     readonly isDeleting = signal<boolean>(false);
     readonly saveSuccess = signal<boolean>(false);
 
-    readonly documentTypes: { label: string; value: DocumentType }[] = [
-        { label: 'Rechnung', value: 'RECEIPT' },
-        { label: 'Vertrag', value: 'CONTRACT' },
-        { label: 'Bank / Finanzen', value: 'BANK_STATEMENT' },
-        { label: 'Zertifikat', value: 'CERTIFICATE' },
-        { label: 'Notiz', value: 'NOTE' },
-        { label: 'Reisepass', value: 'PASSPORT' },
-        { label: 'Sonstiges', value: 'OTHER' }
-    ];
+    readonly documentTypes = DOCUMENT_TYPE_OPTIONS;
 
     readonly safeFileUrl = computed(() => {
         const url = this.document()?.fileUrl;

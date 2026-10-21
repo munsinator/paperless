@@ -2,10 +2,10 @@ import { Component, computed, inject, signal } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DocumentService, UploadDocumentRequest } from '../../services/document.service';
-import { DocumentType } from '../../models/document.model';
 import { DocumentFormService } from '../../services/document-form.service';
 import { toErrorMessage } from '../../utils/http-error';
 import { LoggerService } from '../../services/logger.service';
+import { DOCUMENT_TYPE_OPTIONS, DocumentType, getDocumentTypeLabel } from '../../models/document.model';
 
 const SOURCE = 'UploadComponent';
 
@@ -29,15 +29,7 @@ export class UploadComponent {
     readonly errorMessage = signal<string>('');
     readonly successMessage = signal<string>('');
 
-    readonly documentTypes: { label: string; value: DocumentType }[] = [
-        { label: 'Rechnung', value: 'RECEIPT' },
-        { label: 'Vertrag', value: 'CONTRACT' },
-        { label: 'Bank / Finanzen', value: 'BANK_STATEMENT' },
-        { label: 'Zertifikat', value: 'CERTIFICATE' },
-        { label: 'Notiz', value: 'NOTE' },
-        { label: 'Reisepass', value: 'PASSPORT' },
-        { label: 'Sonstiges', value: 'OTHER' }
-    ];
+    readonly documentTypes = DOCUMENT_TYPE_OPTIONS;
 
     readonly uploadForm = this.documentForm.createForm();
     readonly formattedFileSize = computed(() => {

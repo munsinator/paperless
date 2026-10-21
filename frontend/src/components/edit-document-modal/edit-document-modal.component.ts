@@ -1,6 +1,6 @@
 import { Component, effect, input, output, inject } from '@angular/core';
 import { ReactiveFormsModule } from '@angular/forms';
-import { Document, DocumentType } from '../../models/document.model';
+import { Document, DOCUMENT_TYPE_OPTIONS } from '../../models/document.model';
 import { DocumentFormService } from '../../services/document-form.service';
 
 @Component({
@@ -13,15 +13,7 @@ export class EditDocumentModalComponent {
     private readonly documentForm = inject(DocumentFormService);
 
     readonly document = input.required<Document>();
-    readonly documentTypes: { label: string; value: DocumentType }[] = [
-        { label: 'Rechnung', value: 'RECEIPT' },
-        { label: 'Vertrag', value: 'CONTRACT' },
-        { label: 'Bank / Finanzen', value: 'BANK_STATEMENT' },
-        { label: 'Zertifikat', value: 'CERTIFICATE' },
-        { label: 'Notiz', value: 'NOTE' },
-        { label: 'Reisepass', value: 'PASSPORT' },
-        { label: 'Sonstiges', value: 'OTHER' }
-    ];
+    readonly documentTypes = DOCUMENT_TYPE_OPTIONS;
 
     readonly isSaving = input(false);
     readonly saved = output<Partial<Document>>();
