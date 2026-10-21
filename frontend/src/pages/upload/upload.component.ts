@@ -1,9 +1,9 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DocumentService, UploadDocumentRequest } from '../../services/document.service';
 import { DocumentType } from '../../models/document.model';
-import { TagService } from '../../services/tag.service';
+import { DocumentFormService } from '../../services/document-form.service';
 import { toErrorMessage } from '../../utils/http-error';
 import { LoggerService } from '../../services/logger.service';
 
@@ -19,7 +19,7 @@ export class UploadComponent {
     private static readonly maxFileSize = 15 * 1024 * 1024;
     private readonly documentService = inject(DocumentService);
     private readonly router = inject(Router);
-    private readonly tagService = inject(TagService);
+    private readonly documentForm = inject(DocumentFormService);
     private readonly logger = inject(LoggerService);
 
     readonly selectedFile = signal<File | null>(null);
@@ -39,12 +39,7 @@ export class UploadComponent {
         { label: 'Sonstiges', value: 'OTHER' }
     ];
 
-    private readonly fb = new FormBuilder();
-    readonly uploadForm = this.fb.nonNullable.group({
-        title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
-        documentType: [''],
-        tags: ['', [this.tagService.validator]]
-    });
+    readonly uploadForm = this.documentForm.createForm();
     readonly formattedFileSize = computed(() => {
         const file = this.selectedFile();
         if (!file) return '0 KB';
@@ -139,14 +134,8 @@ export class UploadComponent {
             return;
         }
 
-        const formValues = this.uploadForm.getRawValue();
-        const title = formValues.title.trim();
-        const documentType = this.documentTypes.find(item => item.value === formValues.documentType)?.value;
-        const request: UploadDocumentRequest = {
-            title,
-            type: documentType,
-            tags: this.tagService.parseTags(formValues.tags)
-        };
+        const { title, documentType, tags } = this.documentForm.toDocumentData(this.uploadForm.getRawValue());
+        const request: UploadDocumentRequest = { title: title ?? '', type: documentType, tags: tags ?? [] };
 
         this.errorMessage.set('');
         this.successMessage.set('');

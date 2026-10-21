@@ -1,13 +1,13 @@
 import { Component, computed, effect, inject, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
-import { Document, DocumentType } from '../../models/document.model';
+import { DocumentType } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
 import { DomSanitizer } from '@angular/platform-browser';
-import { TagService } from '../../services/tag.service';
+import { DocumentFormService } from '../../services/document-form.service';
 import { NotificationService } from '../../services/notification.service';
 import { toErrorMessage } from '../../utils/http-error';
 
@@ -20,10 +20,9 @@ import { toErrorMessage } from '../../utils/http-error';
 export class DocumentDetailComponent {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
-    private readonly fb = inject(FormBuilder);
     private readonly documentService = inject(DocumentService);
     private readonly sanitizer = inject(DomSanitizer);
-    private readonly tagService = inject(TagService);
+    private readonly documentForm = inject(DocumentFormService);
     private readonly notifications = inject(NotificationService);
 
     readonly documentId = toSignal(
@@ -62,21 +61,13 @@ export class DocumentDetailComponent {
         return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
     });
 
-    readonly editForm = this.fb.nonNullable.group({
-        title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
-        documentType: this.fb.nonNullable.control<DocumentType | ''>(''),
-        tags: ['', [this.tagService.validator]]
-    });
+    readonly editForm = this.documentForm.createForm();
 
     constructor() {
         effect(() => {
             const doc = this.document();
             if (doc) {
-                this.editForm.patchValue({
-                    title: doc.title,
-                    documentType: doc.documentType ?? '',
-                    tags: this.tagService.formatTags(doc.tags)
-                });
+                this.editForm.patchValue(this.documentForm.toFormValue(doc));
                 this.editForm.markAsPristine();
             }
         });
@@ -95,13 +86,7 @@ export class DocumentDetailComponent {
         this.isSaving.set(true);
         this.saveSuccess.set(false);
 
-        const { title, documentType, tags } = this.editForm.getRawValue();
-
-        const updatedData: Partial<Document> = {
-            title: title.trim(),
-            documentType: documentType || undefined,
-            tags: this.tagService.parseTags(tags)
-        };
+        const updatedData = this.documentForm.toDocumentData(this.editForm.getRawValue());
 
         this.documentService.updateDocument(id, updatedData).subscribe({
             next: () => {

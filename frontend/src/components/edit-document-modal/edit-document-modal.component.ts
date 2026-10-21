@@ -1,7 +1,7 @@
 import { Component, effect, input, output, inject } from '@angular/core';
-import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { Document, DocumentType } from '../../models/document.model';
-import { TagService } from '../../services/tag.service';
+import { DocumentFormService } from '../../services/document-form.service';
 
 @Component({
     selector: 'app-edit-document-modal',
@@ -10,8 +10,7 @@ import { TagService } from '../../services/tag.service';
     templateUrl: './edit-document-modal.component.html'
 })
 export class EditDocumentModalComponent {
-    private readonly fb = inject(FormBuilder);
-    private readonly tagService = inject(TagService);
+    private readonly documentForm = inject(DocumentFormService);
 
     readonly document = input.required<Document>();
     readonly documentTypes: { label: string; value: DocumentType }[] = [
@@ -28,20 +27,11 @@ export class EditDocumentModalComponent {
     readonly saved = output<Partial<Document>>();
     readonly closed = output<void>();
 
-    readonly editForm = this.fb.nonNullable.group({
-        title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
-        documentType: this.fb.nonNullable.control<DocumentType | ''>(''),
-        tags: ['', [this.tagService.validator]]
-    });
+    readonly editForm = this.documentForm.createForm();
 
     constructor() {
         effect(() => {
-            const doc = this.document();
-            this.editForm.patchValue({
-                title: doc.title,
-                documentType: doc.documentType || '',
-                tags: this.tagService.formatTags(doc.tags)
-            });
+            this.editForm.patchValue(this.documentForm.toFormValue(this.document()));
             this.editForm.markAsPristine();
         });
     }
@@ -56,15 +46,7 @@ export class EditDocumentModalComponent {
             return;
         }
 
-        const { title, documentType, tags } = this.editForm.getRawValue();
-
-        const updatedData: Partial<Document> = {
-            title: title.trim(),
-            documentType: documentType || undefined,
-            tags: this.tagService.parseTags(tags)
-        };
-
-        this.saved.emit(updatedData);
+        this.saved.emit(this.documentForm.toDocumentData(this.editForm.getRawValue()));
     }
 
     onClose(): void {
