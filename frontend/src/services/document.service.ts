@@ -51,9 +51,16 @@ export class DocumentService {
             .pipe(map(document => this.toDocument(document)));
     }
 
-    // getrennt, da das Hochladen von Dateien in der Regel einen anderen Endpunkt und eine andere Logik erfordert
-    uploadDocument(_file: File, documentData: UploadDocumentRequest): Observable<Document> {
-        return this.createDocument(documentData);
+    // schickt die PDF zusammen mit den Metadaten als multipart/form-data ans Backend
+    uploadDocument(file: File, documentData: UploadDocumentRequest): Observable<Document> {
+        const formData = new FormData();
+        formData.append('file', file, file.name);
+        formData.append('title', documentData.title);
+        if (documentData.type) formData.append('type', documentData.type);
+        documentData.tags.forEach(tag => formData.append('tags', tag));
+
+        return this.http.post<DocumentResponse>(this.apiUrl, formData)
+            .pipe(map(document => this.toDocument(document)));
     }
 
     updateDocument(id: string, documentData: Partial<Document>): Observable<Document> {

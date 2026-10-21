@@ -5,6 +5,7 @@ import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.exceptions.DocumentNotFoundException;
+import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.mapper.DocumentMapperImpl;
 import at.technikum.api.service.JwtService;
 import at.technikum.api.service.UserService;
@@ -13,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -122,6 +124,66 @@ class DocumentControllerTests {
                 document.getTitle().equals("Semesterrechnung")
                         && document.getTags().equals(List.of("Studium", "Rechnung"))),
                 eq(DocumentTypeEnum.RECEIPT));
+    }
+
+    @Test
+    void post_multipart_upload_transports_file_and_saves_metadata() throws Exception {
+        Document savedDocument = new Document();
+        savedDocument.setId(UUID.randomUUID());
+        savedDocument.setTitle("Semesterrechnung");
+        savedDocument.setTags(List.of("Studium", "Rechnung"));
+        savedDocument.setCreatedAt(LocalDate.now());
+        savedDocument.setType(new DocumentType(DocumentTypeEnum.RECEIPT));
+        when(documentService.saveWithFile(any(Document.class), eq(DocumentTypeEnum.RECEIPT), any()))
+                .thenReturn(savedDocument);
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "rechnung.pdf", "application/pdf", "%PDF-1.7 content".getBytes());
+
+        mockMvc.perform(multipart("/document")
+                        .file(file)
+                        .param("title", "Semesterrechnung")
+                        .param("type", "RECEIPT")
+                        .param("tags", "Studium", "Rechnung"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.title").value("Semesterrechnung"))
+                .andExpect(jsonPath("$.tags[1]").value("Rechnung"));
+
+        verify(documentService).saveWithFile(argThat(document ->
+                document.getTitle().equals("Semesterrechnung")
+                        && document.getTags().equals(List.of("Studium", "Rechnung"))),
+                eq(DocumentTypeEnum.RECEIPT),
+                argThat(uploaded -> "rechnung.pdf".equals(uploaded.getOriginalFilename())));
+    }
+
+    @Test
+    void post_multipart_upload_without_file_returns_bad_request() throws Exception {
+        mockMvc.perform(multipart("/document").param("title", "Semesterrechnung"))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(documentService);
+    }
+
+    @Test
+    void post_multipart_upload_rejects_non_pdf_content() throws Exception {
+        when(documentService.saveWithFile(any(Document.class), any(), any()))
+                .thenThrow(new InvalidFileException("The file is not a valid PDF"));
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "rechnung.pdf", "application/pdf", "not a pdf".getBytes());
+
+        mockMvc.perform(multipart("/document").file(file).param("title", "Semesterrechnung"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("The file is not a valid PDF"));
+    }
+
+    @Test
+    void post_multipart_upload_rejects_blank_title() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "rechnung.pdf", "application/pdf", "%PDF-1.7".getBytes());
+
+        mockMvc.perform(multipart("/document").file(file).param("title", " "))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(documentService);
     }
 
     @Test

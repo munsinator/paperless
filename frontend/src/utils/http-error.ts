@@ -30,12 +30,9 @@ export function toErrorMessage(error: unknown, action: ErrorAction): string {
         case 403:
             return FORBIDDEN_MESSAGE;
         case 404:
-            return action === 'upload'
-                ? 'Der Upload-Endpunkt ist noch nicht im Backend implementiert.'
-                : 'Das Dokument wurde nicht gefunden. Möglicherweise wurde es bereits gelöscht.';
-        case 405:
+            return 'Das Dokument wurde nicht gefunden. Möglicherweise wurde es bereits gelöscht.';
         case 415:
-            return 'Der Upload-Endpunkt ist noch nicht im Backend implementiert.';
+            return 'Der Server unterstützt dieses Dateiformat nicht.';
         case 413:
             return 'Die Datei ist für den Server zu groß.';
         default:
