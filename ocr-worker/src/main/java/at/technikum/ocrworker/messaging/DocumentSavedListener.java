@@ -25,7 +25,7 @@ public class DocumentSavedListener extends EventListener<DocumentSavedEvent>{
 
     @Override
     public void consume(DocumentSavedEvent event) {
-        log.info("OCR-Auftrag empfangen: ID={}, Dokument={}",
+        log.info("Received OCR job: documentId={}, documentName={}",
                 event.getDocumentId(), event.getDocumentName());
     }
 }

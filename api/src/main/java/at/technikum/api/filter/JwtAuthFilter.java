@@ -6,6 +6,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -22,6 +23,7 @@ import java.io.IOException;
  */
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class JwtAuthFilter extends OncePerRequestFilter {
 
     private final UserDetailsService userDetailsService;
@@ -59,10 +61,14 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 // Authentifizierung im SecurityContext speichern
                 SecurityContextHolder.getContext().setAuthentication(authentication);
+            } else {
+                log.warn("Rejected JWT for {} {}: token does not match user", request.getMethod(), request.getRequestURI());
             }
         } catch (UsernameNotFoundException exception) {
+            log.warn("Rejected JWT for {} {}: user no longer exists", request.getMethod(), request.getRequestURI());
             SecurityContextHolder.clearContext();
         } catch (io.jsonwebtoken.JwtException | IllegalArgumentException exception) {
+            log.warn("Rejected JWT for {} {}: {}", request.getMethod(), request.getRequestURI(), exception.getMessage());
             SecurityContextHolder.clearContext();
         }
 

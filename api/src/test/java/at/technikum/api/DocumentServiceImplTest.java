@@ -115,6 +115,7 @@ class DocumentServiceImplTest {
     @Test
     void save_with_file_saves_metadata_for_valid_pdf() {
         Document document = new Document();
+        document.setId(UUID.randomUUID());
         document.setTitle("Rechnung");
         MockMultipartFile file = new MockMultipartFile(
                 "file", "rechnung.pdf", "application/pdf", "%PDF-1.7".getBytes());

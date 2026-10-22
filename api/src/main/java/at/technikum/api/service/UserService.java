@@ -3,6 +3,7 @@ package at.technikum.api.service;
 import at.technikum.api.entity.User;
 import at.technikum.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -14,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService implements UserDetailsService {
 
     private final UserRepository userRepository;
@@ -22,17 +24,25 @@ public class UserService implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) {
+        log.debug("Loading user: {}", username);
         return userRepository.findByUsername(username)
-                .orElseThrow(() -> new UsernameNotFoundException("Invalid username or password"));
+                .orElseThrow(() -> {
+                    log.warn("User lookup failed, unknown username: {}", username);
+                    return new UsernameNotFoundException("Invalid username or password");
+                });
     }
 
     @Transactional
     public User register(String username, String rawPassword) {
         String normalizedUsername = username.trim();
+        log.debug("Registering user: {}", normalizedUsername);
         if (userRepository.existsByUsername(normalizedUsername)) {
+            log.warn("Registration rejected, username already registered: {}", normalizedUsername);
             throw new ResponseStatusException(HttpStatus.CONFLICT, "Username is already registered");
         }
 
-        return userRepository.save(new User(normalizedUsername, passwordEncoder.encode(rawPassword)));
+        User savedUser = userRepository.save(new User(normalizedUsername, passwordEncoder.encode(rawPassword)));
+        log.info("Registered user: {}", savedUser.getUsername());
+        return savedUser;
     }
 }
