@@ -15,6 +15,10 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
+/**
+ * SessionController
+ * Für Login Endpunkt
+ */
 @RestController
 @RequiredArgsConstructor
 public class SessionController {
@@ -24,8 +28,14 @@ public class SessionController {
 
     @PostMapping("/sessions")
     public ResponseEntity<Map<String, String>> login(@Valid @RequestBody AuthDTO dto) {
+        // prüft nichts selbst, leitet nur weiter
+        // ruft UserService.loadUserByUsername() auf, Ergebnis ist ein User Object
+        // Passwort wird verglichen
+        // Wer: der komplette User aus der DB ("principal").
+        // Was er darf: ROLE_USER (kommt aus User.getAuthorities()).
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(dto.getUsername(), dto.getPassword()));
+        // Authentifizierter User
         User user = (User) authentication.getPrincipal();
         return ResponseEntity.ok(Map.of("token", jwtService.generateToken(user.getUsername())));
     }

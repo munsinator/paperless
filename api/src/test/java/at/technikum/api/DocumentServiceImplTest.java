@@ -4,6 +4,7 @@ import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.messaging.DocumentSavedEvent;
+import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.repository.DocumentRepository;
 import at.technikum.api.repository.DocumentTypeRepository;
 import at.technikum.api.service.DocumentServiceImpl;
@@ -13,6 +14,7 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.mock.web.MockMultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -108,5 +110,32 @@ class DocumentServiceImplTest {
         assertNotNull(savedDocument.getId());
         verify(documentRepository).save(current);
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void save_with_file_saves_metadata_for_valid_pdf() {
+        Document document = new Document();
+        document.setTitle("Rechnung");
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "rechnung.pdf", "application/pdf", "%PDF-1.7".getBytes());
+        when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        Document saved = documentService.saveWithFile(document, null, file);
+
+        assertEquals(LocalDate.now(), saved.getCreatedAt());
+        verify(documentRepository).save(document);
+    }
+
+    @Test
+    void save_with_file_rejects_empty_non_pdf_and_fake_pdf_files() {
+        Document document = new Document();
+        MockMultipartFile empty = new MockMultipartFile("file", "a.pdf", "application/pdf", new byte[0]);
+        MockMultipartFile wrongName = new MockMultipartFile("file", "a.txt", "text/plain", "%PDF-1.7".getBytes());
+        MockMultipartFile fakePdf = new MockMultipartFile("file", "a.pdf", "application/pdf", "hello".getBytes());
+
+        assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, empty));
+        assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, wrongName));
+        assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, fakePdf));
+        verifyNoInteractions(documentRepository);
     }
 }

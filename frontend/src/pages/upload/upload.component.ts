@@ -1,23 +1,26 @@
-import { HttpErrorResponse } from '@angular/common/http';
 import { Component, computed, inject, signal } from '@angular/core';
-import { toSignal } from '@angular/core/rxjs-interop';
-import { FormBuilder, ReactiveFormsModule, ValidatorFn, Validators } from '@angular/forms';
+import { ReactiveFormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { DocumentService, UploadDocumentRequest } from '../../services/document.service';
-import { hasDuplicateTags } from '../../validators/tag-list.validator';
-import { DOCUMENT_TYPE_OPTIONS, DocumentType, getDocumentTypeLabel } from '../../models/document.model';
+import { DocumentFormService } from '../../services/document-form.service';
+import { toErrorMessage } from '../../utils/http-error';
+import { LoggerService } from '../../services/logger.service';
+import { DOCUMENT_TYPE_OPTIONS } from '../../models/document.model';
+
+const SOURCE = 'UploadComponent';
 
 @Component({
     selector: 'app-upload',
     standalone: true,
     imports: [ReactiveFormsModule],
-    templateUrl: './upload.component.html',
-    styleUrl: './upload.component.css'
+    templateUrl: './upload.component.html'
 })
 export class UploadComponent {
     private static readonly maxFileSize = 15 * 1024 * 1024;
     private readonly documentService = inject(DocumentService);
     private readonly router = inject(Router);
+    private readonly documentForm = inject(DocumentFormService);
+    private readonly logger = inject(LoggerService);
 
     readonly selectedFile = signal<File | null>(null);
     readonly isDragging = signal<boolean>(false);
@@ -28,24 +31,7 @@ export class UploadComponent {
 
     readonly documentTypes = DOCUMENT_TYPE_OPTIONS;
 
-    private readonly fb = new FormBuilder();
-    private readonly tagsValidator: ValidatorFn = control => this.validateTags(String(control.value));
-    readonly uploadForm = this.fb.nonNullable.group({
-        title: ['', [Validators.required, Validators.pattern(/\S/), Validators.maxLength(200)]],
-        documentType: [''],
-        tags: ['', [this.tagsValidator]]
-    });
-    private readonly formStatus = toSignal(this.uploadForm.statusChanges, {
-        initialValue: this.uploadForm.status
-    });
-
-    readonly isFormValid = computed(() => {
-        return this.selectedFile() !== null
-            && this.formStatus() === 'VALID'
-            && !this.isValidatingFile()
-            && !this.isSubmitting();
-    });
-
+    readonly uploadForm = this.documentForm.createForm();
     readonly formattedFileSize = computed(() => {
         const file = this.selectedFile();
         if (!file) return '0 KB';
@@ -86,9 +72,11 @@ export class UploadComponent {
         this.errorMessage.set('');
         this.successMessage.set('');
         this.selectedFile.set(null);
+        this.logger.debug(SOURCE,`File selected: '${file.name}' (${file.size} bytes, ${file.type || 'unknown type'})`);
 
         if (!file.name.toLocaleLowerCase().endsWith('.pdf')
             || (file.type && file.type !== 'application/pdf')) {
+            this.logger.warn(SOURCE,`Rejected '${file.name}': not a PDF`);
             this.errorMessage.set('Bitte wählen Sie eine PDF-Datei aus.');
             return;
         }
@@ -116,7 +104,7 @@ export class UploadComponent {
                 this.uploadForm.patchValue({ title: file.name.replace(/\.pdf$/i, '') });
             }
         } catch (error) {
-            console.error('PDF-Datei konnte nicht gelesen werden:', error);
+            this.logger.error(SOURCE,`Could not read file '${file.name}'`, error);
             this.errorMessage.set('Die ausgewählte Datei konnte nicht geprüft werden.');
         } finally {
             this.isValidatingFile.set(false);
@@ -129,18 +117,17 @@ export class UploadComponent {
     }
 
     onUpload(): void {
-        if (!this.isFormValid()) return;
-        const file = this.selectedFile();
-        if (!file) return;
+        this.uploadForm.markAllAsTouched();
+        if (this.uploadForm.invalid || this.isValidatingFile() || this.isSubmitting()) return;
 
-        const formValues = this.uploadForm.getRawValue();
-        const title = formValues.title.trim();
-        const documentType = this.documentTypes.find(type => type.value === formValues.documentType)?.value;
-        const request: UploadDocumentRequest = {
-            title,
-            type: documentType,
-            tags: this.normalizeTags(formValues.tags)
-        };
+        const file = this.selectedFile();
+        if (!file) {
+            this.errorMessage.set('Bitte wählen Sie eine PDF-Datei aus.');
+            return;
+        }
+
+        const { title, documentType, tags } = this.documentForm.toDocumentData(this.uploadForm.getRawValue());
+        const request: UploadDocumentRequest = { title: title ?? '', type: documentType, tags: tags ?? [] };
 
         this.errorMessage.set('');
         this.successMessage.set('');
@@ -155,53 +142,10 @@ export class UploadComponent {
                 }, 1000);
             },
             error: (error: unknown) => {
-                console.error('Fehler beim Hochladen des Dokuments:', error);
+                this.logger.error(SOURCE,'Upload failed', error);
                 this.isSubmitting.set(false);
-                this.errorMessage.set(this.getUploadErrorMessage(error));
+                this.errorMessage.set(toErrorMessage(error, 'upload'));
             }
         });
-    }
-
-    private normalizeTags(value: string): string[] {
-        const seen = new Set<string>();
-        return value.split(',')
-            .map(tag => tag.trim())
-            .filter(tag => {
-                const normalized = tag.toLocaleLowerCase();
-                if (!tag || seen.has(normalized)) return false;
-                seen.add(normalized);
-                return true;
-            });
-    }
-
-    private validateTags(value: string): { [key: string]: boolean } | null {
-        if (!value.trim()) return null;
-        const tags = value.split(',').map(tag => tag.trim());
-        if (tags.some(tag => !tag)) return { emptyTag: true };
-        if (tags.length > 20) return { tooManyTags: true };
-        if (tags.some(tag => tag.length > 50)) return { tagTooLong: true };
-        if (hasDuplicateTags(value)) return { duplicateTags: true };
-        return null;
-    }
-
-    private getUploadErrorMessage(error: unknown): string {
-        if (!(error instanceof HttpErrorResponse)) {
-            return 'Der Upload ist fehlgeschlagen. Bitte versuchen Sie es erneut.';
-        }
-        if (error.status === 0) return 'Der Server ist nicht erreichbar. Bitte versuchen Sie es später erneut.';
-        if (error.status === 401 || error.status === 403) {
-            return 'Sie sind nicht berechtigt, dieses Dokument hochzuladen. Bitte melden Sie sich erneut an.';
-        }
-        if (error.status === 400 || error.status === 422) {
-            return 'Der Server hat die Dokumentdaten abgelehnt. Bitte prüfen Sie Titel, Kategorie und Tags.';
-        }
-        if (error.status === 404 || error.status === 405 || error.status === 415) {
-            return 'Der Multipart-Upload-Endpunkt ist noch nicht im Backend implementiert.';
-        }
-        if (error.status === 413) return 'Die Datei ist für den Server zu groß.';
-        if (error.status >= 500) return 'Beim Speichern des Dokuments ist ein Serverfehler aufgetreten.';
-
-        const serverMessage = typeof error.error?.message === 'string' ? error.error.message : null;
-        return serverMessage || `Upload fehlgeschlagen (HTTP ${error.status}).`;
     }
 }
