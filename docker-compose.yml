@@ -6,9 +6,9 @@ services:
       - "5672:5672"   # AMQP protocol
       - "15672:15672" # Management UI
     environment:
-      RABBITMQ_DEFAULT_USER: $RABBIT_USER
-      RABBITMQ_DEFAULT_PASS: $RABBIT_PASSWORD
-      RABBITMQ_DEFAULT_VHOST: $RABBIT_VHOST
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBIT_VHOST}
     #volumes:
     #  - paperless-mq-data:/var/lib/rabbitmq
 

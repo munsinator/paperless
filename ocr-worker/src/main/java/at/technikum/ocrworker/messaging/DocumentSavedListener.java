@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 
 
 @Component
+@Slf4j
 public class DocumentSavedListener extends EventListener<DocumentSavedEvent>{
     public DocumentSavedListener() {}
 
@@ -24,6 +25,7 @@ public class DocumentSavedListener extends EventListener<DocumentSavedEvent>{
 
     @Override
     public void consume(DocumentSavedEvent event) {
-        super.consume(event);
+        log.info("OCR-Auftrag empfangen: ID={}, Dokument={}",
+                event.getDocumentId(), event.getDocumentName());
     }
 }
