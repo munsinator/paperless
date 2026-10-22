@@ -11,6 +11,12 @@ services:
       RABBITMQ_DEFAULT_VHOST: ${RABBIT_VHOST}
     #volumes:
     #  - paperless-mq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 20s
 
   paperless-web-ui:
     build: ./frontend
@@ -33,7 +39,21 @@ services:
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       RABBIT_VHOST: ${RABBIT_VHOST}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      paperless-mq:
+        condition: service_healthy
+
+  ocr-worker:
+    build: ./ocr-worker
+    environment:
+      SPRING_RABBITMQ_HOST: paperless-mq
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+      RABBIT_VHOST: ${RABBIT_VHOST}
+    depends_on:
+      paperless-mq:
+        condition: service_healthy
 
   postgres:
     image: postgres:16-alpine
@@ -46,6 +66,12 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U paperless -d paperless"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
 volumes:
   postgres_data:
