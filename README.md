@@ -12,7 +12,7 @@ The current implementation supports user registration and login, document metada
 | PaperlessREST | Java 25, Spring Boot 4.1.1 |
 | Database | PostgreSQL 16, Spring Data JPA |
 | Message broker | RabbitMQ |
-| OCR worker (doesn't run on compose yet) | Java 25, Spring Boot AMQP |
+| OCR worker | Java 25, Spring Boot AMQP |
 | Object storage (planned) | MinIO  |
 | Search engine (planned) | Elasticsearch (planned) |
 | GenAI worker / provider (planned) | Gemini integration |
@@ -64,51 +64,19 @@ JWT_SECRET=REPLACE_WITH_BASE64_KEY
 ```
 
 The database credentials above must match the PostgreSQL service configuration. 
-Generate a random JWT signing key, then replace the placeholder with the printed value:
+Generate a random JWT signing key, then replace the placeholder.
 
-### 2. Build the API JAR
+### 2. Build and start all services
 
-The API Dockerfile copies a prebuilt JAR; it does not run Maven inside the image build.
-
-```powershell
-cd api
-.\mvnw.cmd clean package -DskipTests
-cd ..
-```
-
-This must produce `api/target/api-0.0.1-SNAPSHOT.jar`.
-The frontend is built automatically inside its Docker build, so local Node.js is not required for this Compose workflow.
-
-### 3. Start infrastructure, then the application
+Start the application with Docker Compose from project root:
 
 ```powershell
-docker compose up -d postgres paperless-mq
-docker compose ps
-docker compose logs postgres paperless-mq
+docker compose up --build
 ```
 
-Wait until PostgreSQL is ready to accept connections and RabbitMQ reports startup completion. The current Compose file has no readiness health checks.
+To run in the background, use `docker compose up -d --build`. View logs with `docker compose logs -f paperless-rest ocr-worker`.
 
-```powershell
-docker compose up -d --build paperless-rest paperless-web-ui
-docker compose logs -f paperless-rest
-```
-
-Wait for the API startup message. Ctrl+C exits log following without stopping the containers. Hibernate creates or updates the schema through `spring.jpa.hibernate.ddl-auto=update`; `api/init.sql` is not mounted by Compose.
-
-### 4. Start the OCR worker separately
-
-In a second terminal, starting at the project root:
-
-```powershell
-cd ocr-worker
-.\mvnw.cmd spring-boot:run
-```
-
-The worker reads the root `.env` through its Spring configuration and connects to RabbitMQ at `localhost:5672`.
-The worker currently has no Dockerfile or Compose service.
-
-### 5. Open and use the application
+### 3. Open and use the application
 
 | Service | Address |
 | --- | --- |
@@ -117,7 +85,7 @@ The worker currently has no Dockerfile or Compose service.
 | RabbitMQ management UI | http://localhost:15672 |
 
 
-### How to stop the application:
+### How to stop the application
 
 ```powershell
 docker compose down
