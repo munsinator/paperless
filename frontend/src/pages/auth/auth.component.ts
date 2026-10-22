@@ -1,92 +1,95 @@
-import { Component, computed, inject, signal } from '@angular/core';
 import { HttpErrorResponse } from '@angular/common/http';
+import { Component, inject, signal } from '@angular/core';
+import {
+  AbstractControl,
+  FormBuilder,
+  ReactiveFormsModule,
+  ValidationErrors,
+  ValidatorFn,
+  Validators
+} from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { AuthService } from '../../services/auth.service';
+import { LoggerService } from '../../services/logger.service';
+
+const SOURCE = 'AuthComponent';
 
 @Component({
   selector: 'app-auth',
   standalone: true,
-  templateUrl: './auth.component.html',
-  styleUrl: './auth.component.css'
+  imports: [ReactiveFormsModule],
+  templateUrl: './auth.component.html'
 })
 export class AuthComponent {
   private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
   private readonly route = inject(ActivatedRoute);
+  private readonly fb = inject(FormBuilder);
+  private readonly logger = inject(LoggerService);
 
-  // UI-Zustand
   readonly isLogin = signal(true);
   readonly isSubmitting = signal(false);
   readonly errorMessage = signal<string | null>(null);
   readonly successMessage = signal<string | null>(null);
 
-  // Formularfelder (werden von Login und Register gemeinsam genutzt)
-  readonly username = signal('');
-  readonly password = signal('');
-  readonly repeatPassword = signal('');
+  private readonly passwordConfirmationValidator: ValidatorFn = (
+    control: AbstractControl
+  ): ValidationErrors | null => {
+    const password = control.get('password')?.value;
+    const repeatPassword = control.get('repeatPassword')?.value;
 
-  // Abgeleiteter Zustand
-  readonly passwordsMatch = computed(() => this.password() === this.repeatPassword());
+    if (!repeatPassword) return { repeatPasswordRequired: true };
+    return password === repeatPassword ? null : { passwordMismatch: true };
+  };
 
-  readonly canLogin = computed(() =>
-    this.username().trim().length > 0 &&
-    this.password().length > 0 &&
-    !this.isSubmitting()
-  );
-
-  readonly canRegister = computed(() =>
-    this.username().trim().length >= 3 &&
-    this.password().length >= 8 &&
-    this.passwordsMatch() &&
-    !this.isSubmitting()
-  );
+  readonly authForm = this.fb.nonNullable.group({
+    username: ['', [
+      Validators.required,
+      Validators.minLength(3),
+      Validators.maxLength(20),
+      Validators.pattern(/^\S+$/)
+    ]],
+    password: ['', [
+      Validators.required,
+      Validators.minLength(8),
+      Validators.pattern(/\S/)
+    ]],
+    repeatPassword: ['']
+  });
 
   setMode(login: boolean): void {
     this.isLogin.set(login);
+    this.authForm.setValidators(login ? null : this.passwordConfirmationValidator);
+    this.authForm.controls.password.reset('');
+    this.authForm.controls.repeatPassword.reset('');
+    this.authForm.controls.username.markAsUntouched();
+    this.authForm.controls.password.markAsUntouched();
+    this.authForm.controls.repeatPassword.markAsUntouched();
+    this.authForm.updateValueAndValidity();
     this.errorMessage.set(null);
     this.successMessage.set(null);
-    this.password.set('');
-    this.repeatPassword.set('');
   }
 
-  async onLogin(event: Event): Promise<void> {
-    event.preventDefault();
-    if (!this.canLogin()) return;
+  async onSubmit(): Promise<void> {
+    this.authForm.markAllAsTouched();
+    if (this.authForm.invalid || this.isSubmitting()) return;
 
     this.isSubmitting.set(true);
     this.errorMessage.set(null);
 
-    try {
-      await this.authService.login({
-        username: this.username().trim(),
-        password: this.password()
-      });
-      await this.router.navigateByUrl(this.returnUrl());
-    } catch (error) {
-      this.errorMessage.set(this.toMessage(error));
-    } finally {
-      this.isSubmitting.set(false);
-    }
-  }
-
-  async onRegister(event: Event): Promise<void> {
-    event.preventDefault();
-    if (!this.canRegister()) return;
-
-    this.isSubmitting.set(true);
-    this.errorMessage.set(null);
+    const { username, password } = this.authForm.getRawValue();
 
     try {
-      const message = await this.authService.register({
-        username: this.username().trim(),
-        password: this.password()
-      });
-      // Zurück zum Login-Tab, Benutzername bleibt eingetragen
-      this.isLogin.set(true);
-      this.password.set('');
-      this.repeatPassword.set('');
-      this.successMessage.set(message || 'Account erstellt. Du kannst dich jetzt anmelden.');
+      if (this.isLogin()) {
+        await this.authService.login({ username, password });
+        await this.router.navigateByUrl(this.returnUrl());
+      } else {
+        const message = await this.authService.register({ username, password });
+        this.setMode(true);
+        this.successMessage.set(message || 'Account erstellt. Du kannst dich jetzt anmelden.');
+      }
     } catch (error) {
+      this.logger.warn(SOURCE,`${this.isLogin() ? 'Login' : 'Registration'} failed for '${username}'`);
       this.errorMessage.set(this.toMessage(error));
     } finally {
       this.isSubmitting.set(false);
@@ -95,7 +98,6 @@ export class AuthComponent {
 
   private returnUrl(): string {
     const url = this.route.snapshot.queryParamMap.get('returnUrl');
-    // nur interne Pfade zulassen (gegen Open Redirect)
     return url && url.startsWith('/') && !url.startsWith('//') ? url : '/dashboard';
   }
 
@@ -114,3 +116,11 @@ export class AuthComponent {
       : 'Registrierung fehlgeschlagen. Bitte versuche es erneut.';
   }
 }
+
+/**
+ * Registrierung:
+ * onSubmit() -> authService.register() -> http.post() -> authInterceptor -> nginx -> SecurityConfig mit CorsFilter & JwtAuthFilter (hier unötig) -> UserController -> UserService -> UserRepository -> Datenbank
+ * 
+ * Login:
+ * onSubmit() -> authService.login() -> http.post() -> authInterceptor -> nginx -> SecurityConfig mit CorsFilter & JwtAuthFilter (hier unötig) -> SessionController -> authenticationManager.authenticate() -> DaoAuthenticationProvider -> UserService.loadUserByUsername() -> UserRepository.findById() -> Datenbank -> JwtService.generateToken() -> zurück zu authService.login() -> this._token.set(token) -> localStorage.setItem(TOKEN_KEY, token)
+*/

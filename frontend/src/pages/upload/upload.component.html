@@ -66,11 +66,11 @@
                 </label>
                 <input id="doc-title" type="text" formControlName="title" placeholder="z. B. Mietvertrag_2026.pdf"
                     class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
-                @if (uploadForm.controls.title.touched && uploadForm.controls.title.errors?.['required']) {
+                @if ((uploadForm.controls.title.dirty || uploadForm.controls.title.touched) && uploadForm.controls.title.errors?.['required']) {
                 <p class="text-xs text-red-600">Bitte geben Sie einen Titel ein.</p>
-                } @else if (uploadForm.controls.title.touched && uploadForm.controls.title.errors?.['pattern']) {
+                } @else if ((uploadForm.controls.title.dirty || uploadForm.controls.title.touched) && uploadForm.controls.title.errors?.['pattern']) {
                 <p class="text-xs text-red-600">Der Titel darf nicht nur aus Leerzeichen bestehen.</p>
-                } @else if (uploadForm.controls.title.touched && uploadForm.controls.title.errors?.['maxlength']) {
+                } @else if ((uploadForm.controls.title.dirty || uploadForm.controls.title.touched) && uploadForm.controls.title.errors?.['maxlength']) {
                 <p class="text-xs text-red-600">Der Titel darf höchstens 200 Zeichen enthalten.</p>
                 }
             </div>
@@ -92,14 +92,16 @@
                 <label for="doc-tags" class="block text-xs font-medium text-slate-700">Tags (mit Komma trennen)</label>
                 <input id="doc-tags" type="text" formControlName="tags" placeholder="Rechnung, Verträge, 2026"
                     class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md px-3 py-2 transition duration-300 focus:outline-none focus:border-slate-400 hover:border-slate-300" />
-                @if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['emptyTag']) {
+                @if ((uploadForm.controls.tags.dirty || uploadForm.controls.tags.touched) && uploadForm.controls.tags.errors?.['emptyTag']) {
                 <p class="text-xs text-red-600">Bitte trennen Sie Tags mit genau einem Komma und lassen Sie keine Tags leer.</p>
-                } @else if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['tooManyTags']) {
+                } @else if ((uploadForm.controls.tags.dirty || uploadForm.controls.tags.touched) && uploadForm.controls.tags.errors?.['tooManyTags']) {
                 <p class="text-xs text-red-600">Es sind höchstens 20 Tags erlaubt.</p>
-                } @else if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['tagTooLong']) {
+                } @else if ((uploadForm.controls.tags.dirty || uploadForm.controls.tags.touched) && uploadForm.controls.tags.errors?.['tagTooLong']) {
                 <p class="text-xs text-red-600">Ein Tag darf höchstens 50 Zeichen enthalten.</p>
-                } @else if (uploadForm.controls.tags.touched && uploadForm.controls.tags.errors?.['duplicateTags']) {
+                } @else if ((uploadForm.controls.tags.dirty || uploadForm.controls.tags.touched) && uploadForm.controls.tags.errors?.['duplicateTags']) {
                 <p class="text-xs text-red-600">Jeder Tag darf nur einmal vorkommen.</p>
+                } @else if ((uploadForm.controls.tags.dirty || uploadForm.controls.tags.touched) && uploadForm.controls.tags.errors?.['whitespaceInTag']) {
+                <p class="text-xs text-red-600">Tags dürfen keine Leerzeichen enthalten.</p>
                 }
             </div>
 
@@ -121,7 +123,7 @@
             }
 
             <!-- Upload Button -->
-            <button type="submit" [disabled]="!isFormValid() || isSubmitting()"
+            <button type="submit" [disabled]="uploadForm.invalid || !selectedFile() || isValidatingFile() || isSubmitting()"
                 class="w-full bg-slate-800 hover:bg-slate-700 disabled:opacity-50 disabled:pointer-events-none text-white text-xs py-2 px-4 rounded font-medium transition-colors">
                 @if (isSubmitting()) {
                 Dokument wird hochgeladen...

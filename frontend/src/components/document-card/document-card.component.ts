@@ -1,8 +1,15 @@
 import { Component, input, output, signal } from '@angular/core';
 import { DatePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { Document, documentTypeLabel } from '../../models/document.model';
+import { Document, getDocumentTypeLabel } from '../../models/document.model';
 import { EditDocumentModalComponent } from '../edit-document-modal/edit-document-modal.component';
+
+// done meldet der Karte, ob das Speichern geklappt hat (Modal bleibt sonst offen)
+export interface DocumentUpdateEvent {
+    id: string;
+    data: Partial<Document>;
+    done: (success: boolean) => void;
+}
 
 @Component({
     selector: 'app-document-card',
@@ -12,14 +19,15 @@ import { EditDocumentModalComponent } from '../edit-document-modal/edit-document
 })
 export class DocumentCardComponent {
     readonly document = input.required<Document>();
-    readonly documentTypeLabel = documentTypeLabel;
+    readonly documentTypeLabel = getDocumentTypeLabel;
 
     // State für das Edit-Modal
     readonly isEditModalOpen = signal(false);
+    readonly isSavingEdit = signal(false);
 
     // Output Events
     readonly delete = output<string>();
-    readonly update = output<{ id: string; data: Partial<Document> }>();
+    readonly update = output<DocumentUpdateEvent>();
 
     openEditModal(): void {
         this.isEditModalOpen.set(true);
@@ -30,11 +38,16 @@ export class DocumentCardComponent {
     }
 
     onSaveEdit(updatedData: Partial<Document>): void {
+        if (this.isSavingEdit()) return;
+        this.isSavingEdit.set(true);
         this.update.emit({
             id: this.document().id,
-            data: updatedData
+            data: updatedData,
+            done: success => {
+                this.isSavingEdit.set(false);
+                if (success) this.closeEditModal();
+            }
         });
-        this.closeEditModal();
     }
 
     onDelete(): void {

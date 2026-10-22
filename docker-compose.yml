@@ -1,6 +1,20 @@
 services:
+  paperless-mq:
+    image: rabbitmq:3-management-alpine
+    container_name: paperless-rabbitmq
+    ports:
+      - "5672:5672"   # AMQP protocol
+      - "15672:15672" # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
+      RABBITMQ_DEFAULT_VHOST: ${RABBIT_VHOST}
+    #volumes:
+    #  - paperless-mq-data:/var/lib/rabbitmq
+
   paperless-web-ui:
     build: ./frontend
+    container_name: paperless-web-ui
     ports:
       - "80:80"
     depends_on:
@@ -8,11 +22,16 @@ services:
 
   paperless-rest:
     build: ./api
+    container_name: paperless-api
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/paperless
-      SPRING_DATASOURCE_USERNAME: paperless
-      SPRING_DATASOURCE_PASSWORD: paperless_password
+      SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
+      SPRING_DATASOURCE_PASSWORD: ${SPRING_DATASOURCE_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
+      SPRING_RABBITMQ_HOST: paperless-mq
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+      RABBIT_VHOST: ${RABBIT_VHOST}
     depends_on:
       - postgres
 
@@ -30,3 +49,4 @@ services:
 
 volumes:
   postgres_data:
+  #paperless-mq-data:

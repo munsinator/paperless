@@ -5,11 +5,11 @@ import { FormsModule } from '@angular/forms';
     selector: 'app-searchbar',
     standalone: true,
     imports: [FormsModule],
-    templateUrl: './searchbar.component.html',
-    styleUrl: './searchbar.component.css'
+    templateUrl: './searchbar.component.html'
 })
 
 export class SearchbarComponent {
+    // kein signal sonst müsste parent (dashboard) schauen, ob sich der Wert geändert hat
     readonly search = output<string>();
     query = '';
 
