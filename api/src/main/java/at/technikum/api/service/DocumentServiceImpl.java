@@ -5,9 +5,12 @@ import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
+import at.technikum.api.messaging.DocumentSavedEvent;
 import at.technikum.api.repository.DocumentTypeRepository;
 import at.technikum.api.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -20,22 +23,32 @@ import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class DocumentServiceImpl implements DocumentService {
 
     private final DocumentRepository documentRepository;
     private final DocumentTypeRepository documentTypeRepository;
+    private final ApplicationEventPublisher eventPublisher;
     // TODO check if mapping has to happen in controller or service
     // private final DocumentMapper mapper;
 
     @Override
     @Transactional
     public Document save(Document document, DocumentTypeEnum requestedType) {
+        log.debug("Saving Document: {}", document.getTitle());
+
         document.setType(resolveType(requestedType));
         document.setCreatedAt(LocalDate.now());
         if (document.getTags() == null) {
             document.setTags(List.of());
         }
-        return documentRepository.save(document);
+        Document savedDocument = documentRepository.save(document);
+
+        log.info("Saved Document: {}", savedDocument.getId());
+
+        eventPublisher.publishEvent(new DocumentSavedEvent(
+                savedDocument.getId().toString(), savedDocument.getTitle()));
+        return savedDocument;
     }
 
     @Override
@@ -48,20 +61,36 @@ public class DocumentServiceImpl implements DocumentService {
     @Override
     @Transactional
     public Document update(UUID documentId, Document updatedDocument, DocumentTypeEnum requestedType) {
+        log.debug("Updating Document: {}", documentId);
+
         Document document = findDocumentById(documentId);
         document.setTitle(updatedDocument.getTitle());
         document.setTags(updatedDocument.getTags() == null ? List.of() : updatedDocument.getTags());
         document.setType(resolveType(requestedType));
-        return documentRepository.save(document);
+
+        Document recentlyUpdatedDocument =  documentRepository.save(document);
+        //TODO: Ask if it's intended to publish an event also when updating a document
+        /*
+        eventPublisher.publishEvent(
+                new DocumentSavedEvent(
+                        recentlyUpdatedDocument.getId().toString(),
+                        recentlyUpdatedDocument.getTitle())
+        );*/
+
+        log.info("Updated Document: {}", recentlyUpdatedDocument.getId());
+        return recentlyUpdatedDocument;
     }
 
     @Override
     @Transactional
     public void delete(UUID documentId) {
+        log.debug("Deleting Document: {}", documentId);
+
         if(!documentRepository.existsById(documentId)) {
             throw new DocumentNotFoundException(documentId);
         }
         documentRepository.deleteById(documentId);
+        log.info("Deleted Document: {}", documentId);
     }
 
     @Override
