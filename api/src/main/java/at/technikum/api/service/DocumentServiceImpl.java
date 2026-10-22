@@ -1,6 +1,7 @@
 package at.technikum.api.service;
 
 import at.technikum.api.exceptions.DocumentNotFoundException;
+import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
@@ -9,7 +10,10 @@ import at.technikum.api.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -32,6 +36,13 @@ public class DocumentServiceImpl implements DocumentService {
             document.setTags(List.of());
         }
         return documentRepository.save(document);
+    }
+
+    @Override
+    @Transactional
+    public Document saveWithFile(Document document, DocumentTypeEnum requestedType, MultipartFile file) {
+        validatePdf(file);
+        return save(document, requestedType);
     }
 
     @Override
@@ -75,5 +86,23 @@ public class DocumentServiceImpl implements DocumentService {
         }
         return documentTypeRepository.findById(requestedType)
                 .orElseGet(() -> documentTypeRepository.save(new DocumentType(requestedType)));
+    }
+
+    private void validatePdf(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new InvalidFileException("The uploaded file is empty");
+        }
+        String filename = file.getOriginalFilename();
+        if (filename == null || !filename.toLowerCase().endsWith(".pdf")) {
+            throw new InvalidFileException("Only PDF files are supported");
+        }
+        try {
+            byte[] header = file.getInputStream().readNBytes(5);
+            if (!new String(header, StandardCharsets.US_ASCII).equals("%PDF-")) {
+                throw new InvalidFileException("The file is not a valid PDF");
+            }
+        } catch (IOException exception) {
+            throw new InvalidFileException("The uploaded file could not be read");
+        }
     }
 }

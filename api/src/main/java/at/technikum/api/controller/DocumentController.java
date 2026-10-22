@@ -9,8 +9,11 @@ import at.technikum.api.service.DocumentServiceImpl;
 import at.technikum.api.entity.Document;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
 
 import java.util.List;
 import java.util.UUID;
@@ -33,6 +36,21 @@ public class DocumentController {
     public ResponseEntity<ResponseDocumentDTO> create(@Valid @RequestBody RequestDocumentDTO requestDocumentDTO) {
         Document entityToSave = mapper.dtoToEntity(requestDocumentDTO);
         Document savedEntity = documentService.save(entityToSave, requestDocumentDTO.getType());
+        return new ResponseEntity<>(mapper.entityToDto(savedEntity), HttpStatus.CREATED);
+    }
+
+    // Upload mit der eigentlichen PDF-Datei: multipart/form-data mit file, title, type und tags.
+    // Die Datei wird validiert und an das Backend übertragen, aber noch nicht gespeichert.
+    // consumes = welches Datenformat die Methode entgegennehmen kann
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<ResponseDocumentDTO> upload(
+        // "nimm den teil im multipart/form-data wo file steht" (append)
+            @RequestPart("file") MultipartFile file,
+            // @ModelAttribute: "nimm die übermittelten Formulardaten und mappe sie auf das DTO"
+            @Valid @ModelAttribute RequestDocumentDTO requestDocumentDTO
+    ) {
+        Document entityToSave = mapper.dtoToEntity(requestDocumentDTO);
+        Document savedEntity = documentService.saveWithFile(entityToSave, requestDocumentDTO.getType(), file);
         return new ResponseEntity<>(mapper.entityToDto(savedEntity), HttpStatus.CREATED);
     }
 
@@ -82,5 +100,4 @@ public class DocumentController {
         //TODO: Create minIO service to delete data
         return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
-
 }
