@@ -1,5 +1,6 @@
 package at.technikum.api.messaging;
 
+import at.technikum.api.exceptions.MessagePublishException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -22,12 +23,25 @@ public abstract class EventPublisher<T> {
     }
 
     public void publish(T event) {
-        try {
-            rabbitTemplate.convertAndSend(exchange, "", event);
-            log.info("Sent message to exchange: {}", exchange);
-        } catch (AmqpException ex) {
-            log.warn("Failed to publish {} to exchange '{}': {}",
-                    event.getClass().getSimpleName(), exchange, ex.getMessage());
+        int maxAttempts = 3;
+        for (int attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+                rabbitTemplate.convertAndSend(exchange, "", event);
+                log.info("Sent message to exchange: {}", exchange);
+                return;
+
+            } catch (AmqpException ex) {
+                if (attempt == maxAttempts) {
+                    throw new MessagePublishException(
+                            "Failed to publish after " + maxAttempts + " attempts",
+                            ex
+                    );
+                }
+
+                log.warn("Publish attempt {}/{} to {} failed; retrying: {}",
+                        attempt, maxAttempts, exchange, ex.getMessage());
+            }
         }
+
     }
 }

@@ -47,7 +47,7 @@ public class DocumentServiceImpl implements DocumentService {
         log.info("Saved Document: {}", savedDocument.getId());
 
         eventPublisher.publishEvent(new DocumentSavedEvent(
-                savedDocument.getId().toString(), savedDocument.getTitle()));
+                savedDocument.getId().toString()));
         return savedDocument;
     }
 
@@ -74,7 +74,6 @@ public class DocumentServiceImpl implements DocumentService {
         eventPublisher.publishEvent(
                 new DocumentSavedEvent(
                         recentlyUpdatedDocument.getId().toString(),
-                        recentlyUpdatedDocument.getTitle())
         );*/
 
         log.info("Updated Document: {}", recentlyUpdatedDocument.getId());

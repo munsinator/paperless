@@ -67,8 +67,7 @@ class DocumentServiceImplTest {
         verify(documentRepository).save(document);
         verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.argThat(
                 (Object event) -> event instanceof DocumentSavedEvent savedEvent
-                        && savedEvent.getDocumentId().equals(document.getId().toString())
-                        && savedEvent.getDocumentName().equals("Semesterrechnung")));
+                        && savedEvent.getDocumentId().equals(document.getId().toString())));
     }
 
     @Test

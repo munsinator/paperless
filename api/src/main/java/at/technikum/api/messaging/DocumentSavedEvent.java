@@ -11,5 +11,4 @@ import lombok.Setter;
 @Setter
 public class DocumentSavedEvent {
     private String documentId;
-    private String documentName;
 }
