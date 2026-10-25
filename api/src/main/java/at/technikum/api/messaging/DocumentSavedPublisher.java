@@ -26,6 +26,10 @@ public class DocumentSavedPublisher extends EventPublisher<DocumentSavedEvent>{
                     event.getDocumentId(),
                     ex
             );
+        } catch (RuntimeException ex) {
+            // The document has already been saved, but in case something unexpected happens
+            log.error("Unexpected OCR publishing failure for documentId={}",
+                    event.getDocumentId(), ex);
         }
     }
 }
