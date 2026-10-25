@@ -46,6 +46,7 @@ services:
 
   ocr-worker:
     build: ./ocr-worker
+    container_name: paperless-ocr
     environment:
       SPRING_RABBITMQ_HOST: paperless-mq
       RABBIT_USER: ${RABBIT_USER}

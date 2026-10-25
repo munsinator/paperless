@@ -1,17 +1,16 @@
 package at.technikum.api.service;
 
 import at.technikum.api.entity.User;
+import at.technikum.api.exceptions.UsernameAlreadyExistsException;
 import at.technikum.api.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -38,7 +37,7 @@ public class UserService implements UserDetailsService {
         log.debug("Registering user: {}", normalizedUsername);
         if (userRepository.existsByUsername(normalizedUsername)) {
             log.warn("Registration rejected, username already registered: {}", normalizedUsername);
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Username is already registered");
+            throw new UsernameAlreadyExistsException("Username is already registered");
         }
 
         User savedUser = userRepository.save(new User(normalizedUsername, passwordEncoder.encode(rawPassword)));
