@@ -40,6 +40,14 @@ public abstract class EventPublisher<T> {
 
                 log.warn("Publish attempt {}/{} to {} failed; retrying: {}",
                         attempt, maxAttempts, exchange, ex.getMessage());
+                try {
+                    //Short break in between retries
+                    Thread.sleep(400);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new MessagePublishException(
+                            "Publishing interrupted while waiting for retry", interrupted);
+                }
             }
         }
 
