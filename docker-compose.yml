@@ -18,6 +18,29 @@ services:
       retries: 12
       start_period: 20s
 
+  paperless-storage:
+    image: pgsty/silo:RELEASE.2026-11-09T00-00-00Z
+    container_name: paperless-silo
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+
+  paperless-search:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.5
+    container_name: paperless-elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false" # trusted Docker network
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+
   paperless-web-ui:
     build: ./frontend
     container_name: paperless-web-ui
@@ -76,4 +99,5 @@ services:
 
 volumes:
   postgres_data:
+  es_data:
   #paperless-mq-data:
