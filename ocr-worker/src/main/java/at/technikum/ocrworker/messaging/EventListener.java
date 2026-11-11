@@ -7,6 +7,7 @@ public abstract class EventListener<T> {
     protected EventListener(){}
 
     public void consume(T event){
-        log.debug("Received event {}", event);
+        log.info("Received event {}", event);
+
     }
 }
