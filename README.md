@@ -48,23 +48,17 @@ Example document request body:
 Supported document types are `RECEIPT`, `CONTRACT`, `BANK_STATEMENT`, `CERTIFICATE`, `NOTE`, `PASSPORT`, and `OTHER`.
 
 ## How to run:
-Note: Host ports `80`, `5432`, `5672`, and `15672` must be available!
+Note: Host ports `80`, `5432`, `5672`, `15672`, `9000`, `9001`, and `9200` must be available!
 
 ### 1. Configure the environment
 
-Create a `.env` file beside `docker-compose.yml` with these local demonstration values:
+Copy the template and replace every `REPLACE_ME` value:
 
-```dotenv
-SPRING_DATASOURCE_USERNAME=paperless
-SPRING_DATASOURCE_PASSWORD=paperless_password
-RABBIT_USER=paperless
-RABBIT_PASSWORD=paperless_local_demo
-RABBIT_VHOST=paperless
-JWT_SECRET=REPLACE_WITH_BASE64_KEY
+```powershell
+Copy-Item .env.example .env
 ```
 
-The database credentials above must match the PostgreSQL service configuration. 
-Generate a random JWT signing key, then replace the placeholder.
+The `.env` file is git-ignored. The database credentials must match the PostgreSQL service configuration.
 
 ### 2. Build and start all services
 
