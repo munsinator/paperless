@@ -28,6 +28,12 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
 
   paperless-search:
     image: docker.elastic.co/elasticsearch/elasticsearch:9.4.5
@@ -40,6 +46,12 @@ services:
       ES_JAVA_OPTS: -Xms1g -Xmx1g
     volumes:
       - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
 
   paperless-web-ui:
     build: ./frontend
@@ -72,9 +84,9 @@ services:
       paperless-mq:
         condition: service_healthy
       paperless-storage:
-        condition: service_started
+        condition: service_healthy
       paperless-search:
-        condition: service_started
+        condition: service_healthy
 
   ocr-worker:
     build: ./ocr-worker
