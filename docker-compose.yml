@@ -61,11 +61,20 @@ services:
       RABBIT_USER: ${RABBIT_USER}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       RABBIT_VHOST: ${RABBIT_VHOST}
+      MINIO_ENDPOINT: http://paperless-storage:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      SPRING_ELASTICSEARCH_URIS: http://paperless-search:9200
     depends_on:
       postgres:
         condition: service_healthy
       paperless-mq:
         condition: service_healthy
+      paperless-storage:
+        condition: service_started
+      paperless-search:
+        condition: service_started
 
   ocr-worker:
     build: ./ocr-worker
