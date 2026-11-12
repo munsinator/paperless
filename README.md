@@ -13,12 +13,37 @@ The current implementation supports user registration and login, document metada
 | Database | PostgreSQL 16, Spring Data JPA |
 | Message broker | RabbitMQ |
 | OCR worker | Java 25, Spring Boot AMQP |
-| Object storage (planned) | MinIO  |
-| Search engine (planned) | Elasticsearch (planned) |
+| Object storage | Silo (`pgsty/silo`, MinIO-compatible fork), MinIO Java client |
+| Search engine | Elasticsearch 9.4, `elasticsearch-java` client |
 | GenAI worker / provider (planned) | Gemini integration |
 
 
 ## Architecture!
+
+### Document processing flow
+
+```
+Upload ─► REST: save metadata in PostgreSQL ─► store PDF in Silo ─► index title in Elasticsearch
+            └─► after commit: DocumentSavedEvent ─► exchange document.events
+                  └─► OCR worker: load PDF from Silo, run Tesseract
+                        └─► OcrCompletedEvent ─► exchange ocr.completed
+                              └─► indexing worker: add OCR text to the Elasticsearch entry
+Search ─► REST ─► Elasticsearch (ranked document IDs) ─► load documents from PostgreSQL
+```
+
+PostgreSQL is the source of truth; Elasticsearch is only the search view. The REST service owns the `title` in the index (upload, rename, delete); the indexing worker only adds `text`.
+
+### Shared names
+
+All services use these names and the same `.env` variables:
+
+| What | Name |
+| --- | --- |
+| Storage bucket / object key | `documents` / document ID (never the file name) |
+| Storage variables | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` |
+| Upload event | exchange `document.events` (fanout) → queue `ocr.document.events`, payload `{ documentId }` |
+| OCR result event | exchange `ocr.completed` (fanout) → queue `indexing.ocr.completed`, payload `{ documentId, text }` |
+| Search index | `documents`, fields `title` and `text`, Elasticsearch `_id` = document ID |
 
 ### REST interface
 
@@ -77,6 +102,8 @@ To run in the background, use `docker compose up -d --build`. View logs with `do
 | Web application | http://localhost |
 | REST API through nginx | http://localhost/api |
 | RabbitMQ management UI | http://localhost:15672 |
+| Silo web console (login: `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`) | http://localhost:9001 |
+| Elasticsearch REST API | http://localhost:9200 |
 
 
 ### How to stop the application
