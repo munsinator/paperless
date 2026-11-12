@@ -5,7 +5,7 @@ import java.util.UUID;
 
 public interface StorageService {
 
-    void store(UUID documentId, InputStream content, long size);
+    void store(UUID documentId, byte[] content);
 
     InputStream load(UUID documentId);
 
