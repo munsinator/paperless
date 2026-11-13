@@ -5,9 +5,11 @@ import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.messaging.DocumentSavedEvent;
 import at.technikum.api.exceptions.InvalidFileException;
+import at.technikum.api.exceptions.StorageException;
 import at.technikum.api.repository.DocumentRepository;
 import at.technikum.api.repository.DocumentTypeRepository;
 import at.technikum.api.service.DocumentServiceImpl;
+import at.technikum.api.service.StorageService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -25,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -40,6 +43,9 @@ class DocumentServiceImplTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private StorageService storageService;
 
     @InjectMocks
     private DocumentServiceImpl documentService;
@@ -112,18 +118,32 @@ class DocumentServiceImplTest {
     }
 
     @Test
-    void save_with_file_saves_metadata_for_valid_pdf() {
+    void save_with_file_saves_metadata_and_stores_pdf_for_valid_pdf() {
         Document document = new Document();
         document.setId(UUID.randomUUID());
         document.setTitle("Rechnung");
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "rechnung.pdf", "application/pdf", "%PDF-1.7".getBytes());
+        byte[] content = "%PDF-1.7".getBytes();
+        MockMultipartFile file = new MockMultipartFile("file", "rechnung.pdf", "application/pdf", content);
         when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Document saved = documentService.saveWithFile(document, null, file);
 
         assertEquals(LocalDate.now(), saved.getCreatedAt());
         verify(documentRepository).save(document);
+        verify(storageService).store(document.getId(), content);
+    }
+
+    @Test
+    void save_with_file_propagates_storage_failure() {
+        Document document = new Document();
+        document.setId(UUID.randomUUID());
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "rechnung.pdf", "application/pdf", "%PDF-1.7".getBytes());
+        when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new StorageException("Storage down", new RuntimeException()))
+                .when(storageService).store(any(UUID.class), any(byte[].class));
+
+        assertThrows(StorageException.class, () -> documentService.saveWithFile(document, null, file));
     }
 
     @Test
@@ -136,6 +156,6 @@ class DocumentServiceImplTest {
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, empty));
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, wrongName));
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, fakePdf));
-        verifyNoInteractions(documentRepository);
+        verifyNoInteractions(documentRepository, storageService);
     }
 }
