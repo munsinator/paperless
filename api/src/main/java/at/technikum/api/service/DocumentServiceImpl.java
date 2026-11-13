@@ -29,6 +29,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentTypeRepository documentTypeRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final StorageService storageService;
     // TODO check if mapping has to happen in controller or service
     // private final DocumentMapper mapper;
 
@@ -55,7 +56,9 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public Document saveWithFile(Document document, DocumentTypeEnum requestedType, MultipartFile file) {
         validatePdf(file);
-        return save(document, requestedType);
+        Document savedDocument = save(document, requestedType);
+        storageService.store(savedDocument.getId(), readBytes(file));
+        return savedDocument;
     }
 
     @Override
@@ -114,6 +117,14 @@ public class DocumentServiceImpl implements DocumentService {
         }
         return documentTypeRepository.findById(requestedType)
                 .orElseGet(() -> documentTypeRepository.save(new DocumentType(requestedType)));
+    }
+
+    private byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException exception) {
+            throw new InvalidFileException("The uploaded file could not be read");
+        }
     }
 
     private void validatePdf(MultipartFile file) {
