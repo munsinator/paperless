@@ -28,6 +28,8 @@ services:
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    volumes:
+      - silo_data:/data
     healthcheck:
       test: ["CMD", "curl", "-fs", "http://localhost:9000/minio/health/live"]
       interval: 5s
@@ -120,5 +122,6 @@ services:
 
 volumes:
   postgres_data:
+  silo_data:
   es_data:
   #paperless-mq-data:
