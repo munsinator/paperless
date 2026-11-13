@@ -60,6 +60,15 @@ class MinioStorageServiceTest {
     }
 
     @Test
+    void store_throws_storage_exception_when_storage_is_unreachable() throws Exception {
+        when(minioClient.putObject(any(PutObjectArgs.class)))
+                .thenThrow(new IllegalStateException(new java.net.ConnectException("connection refused")));
+        MinioStorageService storageService = new MinioStorageService(minioClient, PROPERTIES);
+
+        assertThrows(StorageException.class, () -> storageService.store(UUID.randomUUID(), new byte[]{1}));
+    }
+
+    @Test
     void delete_removes_object_with_document_id_as_key() throws Exception {
         UUID id = UUID.randomUUID();
         MinioStorageService storageService = new MinioStorageService(minioClient, PROPERTIES);

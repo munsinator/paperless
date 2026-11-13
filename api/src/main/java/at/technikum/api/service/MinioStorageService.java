@@ -40,7 +40,7 @@ public class MinioStorageService implements StorageService {
                     .contentType(MediaType.APPLICATION_PDF_VALUE)
                     .build());
             log.info("Stored PDF for documentId={} ({} bytes)", documentId, content.length);
-        } catch (MinioException ex) {
+        } catch (MinioException | IllegalStateException ex) { // MinIO-Client wirft bei Verbindungsfehlern eine IllegalStateException
             log.warn("Storing PDF failed for documentId={}: {}", documentId, ex.getMessage());
             throw new StorageException("Could not store PDF for document " + documentId, ex);
         }
@@ -60,7 +60,7 @@ public class MinioStorageService implements StorageService {
             }
             log.warn("Loading PDF failed for documentId={}: {}", documentId, ex.getMessage());
             throw new StorageException("Could not load PDF for document " + documentId, ex);
-        } catch (MinioException ex) {
+        } catch (MinioException | IllegalStateException ex) {
             log.warn("Loading PDF failed for documentId={}: {}", documentId, ex.getMessage());
             throw new StorageException("Could not load PDF for document " + documentId, ex);
         }
@@ -74,7 +74,7 @@ public class MinioStorageService implements StorageService {
                     .object(documentId.toString())
                     .build());
             log.info("Deleted PDF for documentId={}", documentId);
-        } catch (MinioException ex) {
+        } catch (MinioException | IllegalStateException ex) {
             log.warn("Deleting PDF failed for documentId={}: {}", documentId, ex.getMessage());
             throw new StorageException("Could not delete PDF for document " + documentId, ex);
         }
