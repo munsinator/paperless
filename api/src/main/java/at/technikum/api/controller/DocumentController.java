@@ -9,6 +9,8 @@ import at.technikum.api.entity.Document;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -16,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.UUID;
 
@@ -100,8 +103,13 @@ public class DocumentController {
     @GetMapping("/{documentId}/data")
     public ResponseEntity<InputStreamResource> findDataById(@PathVariable UUID documentId) {
         log.debug("Get document data request: id={}", documentId);
+        Document document = documentService.findDocumentById(documentId);
+        ContentDisposition disposition = ContentDisposition.inline()
+                .filename(document.getTitle() + ".pdf", StandardCharsets.UTF_8)
+                .build();
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
+                .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body(new InputStreamResource(documentService.loadFile(documentId)));
     }
 }
