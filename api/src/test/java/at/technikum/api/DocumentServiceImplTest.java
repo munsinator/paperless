@@ -151,6 +151,26 @@ class DocumentServiceImplTest {
     }
 
     @Test
+    void delete_removes_document_and_stored_file() {
+        UUID id = UUID.randomUUID();
+        when(documentRepository.existsById(id)).thenReturn(true);
+
+        documentService.delete(id);
+
+        verify(documentRepository).deleteById(id);
+        verify(storageService).delete(id);
+    }
+
+    @Test
+    void delete_throws_not_found_and_skips_storage_for_unknown_document() {
+        UUID id = UUID.randomUUID();
+        when(documentRepository.existsById(id)).thenReturn(false);
+
+        assertThrows(DocumentNotFoundException.class, () -> documentService.delete(id));
+        verifyNoInteractions(storageService);
+    }
+
+    @Test
     void load_file_returns_stream_from_storage_for_existing_document() {
         UUID id = UUID.randomUUID();
         InputStream content = new ByteArrayInputStream("%PDF-1.7".getBytes());
