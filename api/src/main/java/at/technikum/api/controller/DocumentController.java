@@ -104,11 +104,4 @@ public class DocumentController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(new InputStreamResource(documentService.loadFile(documentId)));
     }
-
-    @DeleteMapping("/{documentId}/data")
-    public ResponseEntity<Void> deleteData(@PathVariable UUID documentId) {
-        log.debug("Delete document data request: id={}", documentId);
-        documentService.deleteFile(documentId);
-        return ResponseEntity.noContent().build();
-    }
 }

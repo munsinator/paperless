@@ -24,9 +24,6 @@ public interface DocumentService {
     // löscht das Dokument inklusive der gespeicherten Datei
     void delete(UUID documentId);
 
-    // löscht nur die gespeicherte Datei, das Dokument bleibt bestehen
-    void deleteFile(UUID documentId);
-
     List<Document> findAllDocuments(String query);
 
     Document findDocumentById(UUID documentId);

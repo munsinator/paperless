@@ -106,14 +106,6 @@ public class DocumentServiceImpl implements DocumentService {
     }
 
     @Override
-    public void deleteFile(UUID documentId) {
-        if (!documentRepository.existsById(documentId)) {
-            throw new DocumentNotFoundException(documentId);
-        }
-        storageService.delete(documentId);
-    }
-
-    @Override
     @Transactional(readOnly = true)
     public List<Document> findAllDocuments(String query) {
         if (query == null || query.isBlank()) {
