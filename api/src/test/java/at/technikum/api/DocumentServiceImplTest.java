@@ -4,6 +4,7 @@ import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.messaging.DocumentSavedEvent;
+import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.exceptions.StorageException;
 import at.technikum.api.repository.DocumentRepository;
@@ -18,6 +19,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -25,6 +28,7 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
@@ -144,6 +148,25 @@ class DocumentServiceImplTest {
                 .when(storageService).store(any(UUID.class), any(byte[].class));
 
         assertThrows(StorageException.class, () -> documentService.saveWithFile(document, null, file));
+    }
+
+    @Test
+    void load_file_returns_stream_from_storage_for_existing_document() {
+        UUID id = UUID.randomUUID();
+        InputStream content = new ByteArrayInputStream("%PDF-1.7".getBytes());
+        when(documentRepository.existsById(id)).thenReturn(true);
+        when(storageService.load(id)).thenReturn(content);
+
+        assertSame(content, documentService.loadFile(id));
+    }
+
+    @Test
+    void load_file_throws_not_found_and_skips_storage_for_unknown_document() {
+        UUID id = UUID.randomUUID();
+        when(documentRepository.existsById(id)).thenReturn(false);
+
+        assertThrows(DocumentNotFoundException.class, () -> documentService.loadFile(id));
+        verifyNoInteractions(storageService);
     }
 
     @Test
