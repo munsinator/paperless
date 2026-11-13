@@ -54,11 +54,14 @@ All paths below use the host prefix `http://localhost/api`. Document endpoints r
 | POST | `/users` | Register with `username` and `password` |
 | POST | `/sessions` | Log in and receive a JWT |
 | POST | `/document` | Create metadata and trigger a document-saved event |
+| POST | `/document` (multipart) | Upload a PDF (`file`, `title`, `type`, `tags`): saves metadata, then stores the PDF in Silo, then triggers the event |
 | GET | `/document` | List documents; optional `?query=...` searches title and OCR text |
 | GET | `/document/{id}` | Read document metadata |
 | PUT | `/document/{id}` | Replace editable metadata |
-| DELETE | `/document/{id}` | Delete document metadata |
-| GET / DELETE | `/document/{id}/data` | File operations; currently return 501 |
+| DELETE | `/document/{id}` | Delete the document and its stored PDF |
+| GET | `/document/{id}/data` | Download the stored PDF (`404` if the document or its file does not exist) |
+
+If the storage is unavailable, the upload fails with `503` and nothing is persisted (the database transaction is rolled back). Uploads are limited to 15 MB.
 
 Example document request body:
 
