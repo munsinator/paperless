@@ -21,7 +21,11 @@ public interface DocumentService {
 
     Document update(UUID documentId, Document document, DocumentTypeEnum type);
 
+    // löscht das Dokument inklusive der gespeicherten Datei
     void delete(UUID documentId);
+
+    // löscht nur die gespeicherte Datei, das Dokument bleibt bestehen
+    void deleteFile(UUID documentId);
 
     List<Document> findAllDocuments(String query);
 

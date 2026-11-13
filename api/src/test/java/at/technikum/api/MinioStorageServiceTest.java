@@ -40,8 +40,8 @@ class MinioStorageServiceTest {
 
     @Test
     void load_throws_storage_exception_for_other_errors() throws Exception {
-        when(minioClient.getObject(org.mockito.ArgumentMatchers.any(GetObjectArgs.class)))
-                .thenThrow(errorResponseException("AccessDenied"));
+        ErrorResponseException accessDenied = errorResponseException("AccessDenied");
+        when(minioClient.getObject(org.mockito.ArgumentMatchers.any(GetObjectArgs.class))).thenThrow(accessDenied);
         MinioStorageService storageService = new MinioStorageService(minioClient, PROPERTIES);
 
         assertThrows(StorageException.class, () -> storageService.load(UUID.randomUUID()));

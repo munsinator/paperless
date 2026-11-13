@@ -106,9 +106,9 @@ public class DocumentController {
     }
 
     @DeleteMapping("/{documentId}/data")
-    public ResponseEntity<String> deleteData(@PathVariable UUID documentId) {
-        log.warn("Delete document data request not implemented: id={}", documentId);
-        //TODO: Create minIO service to delete data
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    public ResponseEntity<Void> deleteData(@PathVariable UUID documentId) {
+        log.debug("Delete document data request: id={}", documentId);
+        documentService.deleteFile(documentId);
+        return ResponseEntity.noContent().build();
     }
 }

@@ -101,7 +101,16 @@ public class DocumentServiceImpl implements DocumentService {
             throw new DocumentNotFoundException(documentId);
         }
         documentRepository.deleteById(documentId);
+        storageService.delete(documentId);
         log.info("Deleted Document: {}", documentId);
+    }
+
+    @Override
+    public void deleteFile(UUID documentId) {
+        if (!documentRepository.existsById(documentId)) {
+            throw new DocumentNotFoundException(documentId);
+        }
+        storageService.delete(documentId);
     }
 
     @Override
