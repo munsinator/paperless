@@ -104,7 +104,7 @@ public class DocumentController {
     public ResponseEntity<InputStreamResource> findDataById(@PathVariable UUID documentId) {
         log.debug("Get document data request: id={}", documentId);
         Document document = documentService.findDocumentById(documentId);
-        ContentDisposition disposition = ContentDisposition.inline()
+        ContentDisposition disposition = ContentDisposition.attachment()
                 .filename(document.getTitle() + ".pdf", StandardCharsets.UTF_8)
                 .build();
         return ResponseEntity.ok()

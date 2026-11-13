@@ -243,6 +243,8 @@ class DocumentControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType("application/pdf"))
                 .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.startsWith("attachment")))
+                .andExpect(header().string("Content-Disposition",
                         org.hamcrest.Matchers.containsString("Semesterrechnung.pdf")))
                 .andExpect(content().bytes(content));
     }
