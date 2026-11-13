@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
@@ -59,6 +60,14 @@ public class DocumentServiceImpl implements DocumentService {
         Document savedDocument = save(document, requestedType);
         storageService.store(savedDocument.getId(), readBytes(file));
         return savedDocument;
+    }
+
+    @Override
+    public InputStream loadFile(UUID documentId) {
+        if (!documentRepository.existsById(documentId)) {
+            throw new DocumentNotFoundException(documentId);
+        }
+        return storageService.load(documentId);
     }
 
     @Override

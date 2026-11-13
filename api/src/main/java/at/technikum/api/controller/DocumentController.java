@@ -2,13 +2,13 @@ package at.technikum.api.controller;
 
 import at.technikum.api.dto.request.RequestDocumentDTO;
 import at.technikum.api.dto.response.ResponseDocumentDTO;
-import at.technikum.api.dto.response.ResponseDocumentData;
 import at.technikum.api.mapper.DocumentMapper;
 import at.technikum.api.service.DocumentService;
 import at.technikum.api.service.DocumentServiceImpl;
 import at.technikum.api.entity.Document;
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -42,7 +42,7 @@ public class DocumentController {
     }
 
     // Upload mit der eigentlichen PDF-Datei: multipart/form-data mit file, title, type und tags.
-    // Die Datei wird validiert und an das Backend übertragen, aber noch nicht gespeichert.
+    // Die Datei wird validiert und im Storage abgelegt.
     // consumes = welches Datenformat die Methode entgegennehmen kann
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ResponseDocumentDTO> upload(
@@ -98,10 +98,11 @@ public class DocumentController {
     }
 
     @GetMapping("/{documentId}/data")
-    public ResponseEntity<ResponseDocumentData> findDataById(@PathVariable UUID documentId) {
-        log.warn("Get document data request not implemented: id={}", documentId);
-        //TODO: Create minIO service to fetch data and don't forget to map the response from service to ResponseDocumentData
-        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
+    public ResponseEntity<InputStreamResource> findDataById(@PathVariable UUID documentId) {
+        log.debug("Get document data request: id={}", documentId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_PDF)
+                .body(new InputStreamResource(documentService.loadFile(documentId)));
     }
 
     @DeleteMapping("/{documentId}/data")
