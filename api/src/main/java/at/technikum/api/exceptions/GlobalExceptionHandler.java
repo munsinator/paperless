@@ -23,6 +23,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
     }
 
+    @ExceptionHandler(StoredFileNotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleStoredFileNotFound(StoredFileNotFoundException exception) {
+        logger.debug("Stored file not found: {}", exception.getMessage());
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.NOT_FOUND.value(),
+                "Not Found",
+                exception.getMessage()
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.NOT_FOUND);
+    }
+
     @ExceptionHandler(UsernameAlreadyExistsException.class)
     public ResponseEntity<ErrorResponse> handleUserAlreadyExistsException(UsernameAlreadyExistsException exception) {
         logger.debug("User already exists: {}", exception.getMessage());
