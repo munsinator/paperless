@@ -111,6 +111,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         documentRepository.deleteById(documentId);
         storageService.delete(documentId);
+        deleteFromSearchIndex(documentId);
         log.info("Deleted Document: {}", documentId);
     }
 
@@ -143,6 +144,14 @@ public class DocumentServiceImpl implements DocumentService {
             searchService.saveTitle(document.getId(), document.getTitle());
         } catch (SearchException exception) {
             log.warn("Title of document {} could not be saved in the search index", document.getId(), exception);
+        }
+    }
+
+    private void deleteFromSearchIndex(UUID documentId) {
+        try {
+            searchService.delete(documentId);
+        } catch (SearchException exception) {
+            log.warn("Document {} could not be deleted from the search index", documentId, exception);
         }
     }
 
