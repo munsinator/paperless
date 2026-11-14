@@ -88,6 +88,7 @@ public class DocumentServiceImpl implements DocumentService {
         document.setType(resolveType(requestedType));
 
         Document recentlyUpdatedDocument =  documentRepository.save(document);
+        // bewusst bei jedem Update (nicht nur bei Titeländerung): holt einen früher fehlgeschlagenen Index-Eintrag nach; bei der Menge von Dokumenten ist das vetretbar
         saveTitleInSearchIndex(recentlyUpdatedDocument);
         //TODO: Ask if it's intended to publish an event also when updating a document
         /*
