@@ -53,7 +53,7 @@
             </div>
 
             <div class="flex-1 bg-slate-100 flex items-center justify-center p-4">
-                @if (document()?.fileUrl) {
+                @if (safeFileUrl()) {
                 <iframe [src]="safeFileUrl()"
                     class="w-full h-full min-h-[500px] rounded border border-slate-200 bg-white" title="PDF Vorschau">
                 </iframe>
@@ -69,7 +69,9 @@
                         </svg>
                     </div>
                     <p class="text-xs font-medium text-slate-700">{{ document()?.title }}</p>
-                    <p class="text-[10px] text-slate-400 mt-1">Vorschau wird geladen...</p>
+                    <p class="text-[10px] text-slate-400 mt-1">
+                        @if (previewResource.isLoading()) { Vorschau wird geladen... } @else { Keine Vorschau verfügbar }
+                    </p>
                 </div>
                 }
             </div>
