@@ -88,6 +88,7 @@ public class DocumentServiceImpl implements DocumentService {
         document.setType(resolveType(requestedType));
 
         Document recentlyUpdatedDocument =  documentRepository.save(document);
+        saveTitleInSearchIndex(recentlyUpdatedDocument);
         //TODO: Ask if it's intended to publish an event also when updating a document
         /*
         eventPublisher.publishEvent(
