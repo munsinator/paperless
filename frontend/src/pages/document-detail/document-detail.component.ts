@@ -61,7 +61,7 @@ export class DocumentDetailComponent {
 
     constructor() {
         effect((onCleanup) => { // onCleanup: ausgeführt, bevor der Effect erneut ausgeführt wird oder wenn der Effect zerstört wird.
-            const blob = this.previewResource.value();
+            const blob = this.previewResource.hasValue() ? this.previewResource.value() : undefined;
             if (!blob) {
                 this.safeFileUrl.set(null);
                 return;
