@@ -6,6 +6,7 @@ import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.messaging.DocumentSavedEvent;
 import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
+import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.exceptions.StorageException;
 import at.technikum.api.repository.DocumentRepository;
 import at.technikum.api.repository.DocumentTypeRepository;
@@ -21,6 +22,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.List;
@@ -231,6 +233,16 @@ class DocumentServiceImplTest {
         assertEquals(allDocuments, documentService.findAllDocuments("   "));
 
         verifyNoInteractions(searchService);
+    }
+
+    @Test
+    void find_all_documents_propagates_search_failure_without_touching_database() {
+        when(searchService.search("rechnung"))
+                .thenThrow(new SearchException("Search in Elasticsearch failed", new IOException("down")));
+
+        assertThrows(SearchException.class, () -> documentService.findAllDocuments("rechnung"));
+
+        verifyNoInteractions(documentRepository);
     }
 
     private Document documentWithId() {
