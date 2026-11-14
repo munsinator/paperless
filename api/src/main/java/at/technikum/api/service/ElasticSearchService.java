@@ -71,6 +71,14 @@ public class ElasticSearchService implements SearchService {
 
     @Override
     public void delete(UUID documentId) {
-        throw new UnsupportedOperationException("Implemented in #76");
+        log.debug("Deleting document {} from index '{}'", documentId, INDEX);
+        try {
+            client.delete(delete -> delete
+                    .index(INDEX)
+                    .id(documentId.toString()));
+            log.info("Deleted document {} from search index", documentId);
+        } catch (IOException | ElasticsearchException exception) {
+            throw new SearchException("Deleting document in Elasticsearch failed", exception);
+        }
     }
 }
