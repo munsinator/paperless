@@ -6,7 +6,7 @@ import { rxResource, toSignal } from '@angular/core/rxjs-interop';
 import { map } from 'rxjs';
 import { DOCUMENT_TYPE_OPTIONS } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
-import { DomSanitizer } from '@angular/platform-browser';
+import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { DocumentFormService } from '../../services/document-form.service';
 import { NotificationService } from '../../services/notification.service';
 import { toErrorMessage } from '../../utils/http-error';
@@ -49,14 +49,29 @@ export class DocumentDetailComponent {
 
     readonly documentTypes = DOCUMENT_TYPE_OPTIONS;
 
-    readonly safeFileUrl = computed(() => {
-        const url = this.document()?.fileUrl;
-        return url ? this.sanitizer.bypassSecurityTrustResourceUrl(url) : null;
+    // lädt die PDF für die Vorschau (über HttpClient, damit der JWT mitgeschickt wird)
+    readonly previewResource = rxResource({
+        params: () => this.documentId() || undefined,
+        stream: ({ params: id }) => this.documentService.downloadDocument(id)
     });
+
+    readonly safeFileUrl = signal<SafeResourceUrl | null>(null);
 
     readonly editForm = this.documentForm.createForm();
 
     constructor() {
+        effect((onCleanup) => { // onCleanup: ausgeführt, bevor der Effect erneut ausgeführt wird oder wenn der Effect zerstört wird.
+            const blob = this.previewResource.value();
+            if (!blob) {
+                this.safeFileUrl.set(null);
+                return;
+            }
+            const url = URL.createObjectURL(blob);
+            this.safeFileUrl.set(this.sanitizer.bypassSecurityTrustResourceUrl(url)); // Sanitizer: überprüft URLs, bevor sie in HTML-Elemente eingefügt werden
+            // neuen Blob und Effect wird erneut ausgeführt; Komponente wird zerstört, z.B. Detailseite verlassen
+            onCleanup(() => URL.revokeObjectURL(url));
+        });
+
         effect(() => {
             const doc = this.document();
             if (doc) {

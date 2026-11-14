@@ -24,6 +24,8 @@ describe('DocumentDetailComponent download', () => {
             ]
         });
         documentService.getDocumentById.mockReturnValue(of({ id: 'abc-123', title: 'Rechnung', createdAt: '', tags: [] }));
+        // die Seite lädt die PDF schon beim Öffnen für die Vorschau
+        documentService.downloadDocument.mockReturnValue(of(new Blob(['%PDF-1.7'], { type: 'application/pdf' })));
         const fixture = TestBed.createComponent(DocumentDetailComponent); // Instanz deiner DocumentDetailComponent
         fixture.detectChanges(); // Lifecycle-Methoden wie ngOnInit()
         await fixture.whenStable(); // warten, bis die asynchronen Vorgänge der Komponente abgeschlossen sind: z.B. bis das Observable mit den simulierten Dokumentinformationen verarbeitet wurde
