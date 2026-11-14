@@ -29,7 +29,7 @@ public class MinioBucketInitializer implements ApplicationRunner {
             }
             minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
             log.info("Created storage bucket '{}'", bucket);
-        } catch (MinioException ex) {
+        } catch (MinioException | IllegalStateException ex) { // MinIO-Client wirft bei Verbindungsfehlern eine IllegalStateException
             throw new StorageException("Could not prepare storage bucket '" + bucket + "'", ex);
         }
     }
