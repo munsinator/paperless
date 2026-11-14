@@ -222,6 +222,17 @@ class DocumentServiceImplTest {
         assertEquals(List.of(second, first), result);
     }
 
+    @Test
+    void find_all_documents_without_query_returns_all_documents_and_skips_search() {
+        List<Document> allDocuments = List.of(documentWithId(), documentWithId());
+        when(documentRepository.findAll()).thenReturn(allDocuments);
+
+        assertEquals(allDocuments, documentService.findAllDocuments(null));
+        assertEquals(allDocuments, documentService.findAllDocuments("   "));
+
+        verifyNoInteractions(searchService);
+    }
+
     private Document documentWithId() {
         Document document = new Document();
         document.setId(UUID.randomUUID());
