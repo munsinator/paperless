@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -63,6 +64,38 @@ class ElasticSearchServiceTest {
         when(client.search(anySearch(), eq(Void.class))).thenThrow(mock(ElasticsearchException.class));
 
         assertThrows(SearchException.class, () -> searchService.search("hello"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked") // Test verwendet any(Function.class): Java gibt manchmal Warnung bezüglich der nicht überprüften Typinformation
+    void save_title_sends_partial_update_to_elasticsearch() throws IOException {
+        searchService.saveTitle(UUID.randomUUID(), "Meine Rechnung");
+
+        verify(client).update(any(Function.class), eq(Void.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void save_title_wraps_connection_failure_in_search_exception() throws IOException {
+        when(client.update(any(Function.class), eq(Void.class))).thenThrow(new IOException("connection refused"));
+
+        assertThrows(SearchException.class, () -> searchService.saveTitle(UUID.randomUUID(), "Meine Rechnung"));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void delete_removes_document_from_elasticsearch() throws IOException {
+        searchService.delete(UUID.randomUUID());
+
+        verify(client).delete(any(Function.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void delete_wraps_elasticsearch_error_in_search_exception() throws IOException {
+        when(client.delete(any(Function.class))).thenThrow(mock(ElasticsearchException.class));
+
+        assertThrows(SearchException.class, () -> searchService.delete(UUID.randomUUID()));
     }
 
     private void mockResponse(SearchResponse<Void> response) throws IOException {
