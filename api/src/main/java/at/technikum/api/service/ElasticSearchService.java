@@ -49,7 +49,7 @@ public class ElasticSearchService implements SearchService {
     }
 
     @Override
-    public void indexTitle(UUID documentId, String title) {
+    public void saveTitle(UUID documentId, String title) {
         throw new UnsupportedOperationException("Implemented in #76");
     }
 

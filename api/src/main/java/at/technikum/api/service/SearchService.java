@@ -7,7 +7,7 @@ public interface SearchService {
 
     List<UUID> search(String query);
 
-    void indexTitle(UUID documentId, String title);
+    void saveTitle(UUID documentId, String title);
 
     void delete(UUID documentId);
 }
