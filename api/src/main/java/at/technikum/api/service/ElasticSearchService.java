@@ -19,12 +19,12 @@ import java.util.UUID;
 @Slf4j
 public class ElasticSearchService implements SearchService {
 
-    private static final String INDEX = "documents"; // Index bei Elasticsearch ca das was eine Tabelle ist in einer relationalen Datenbank
+    static final String INDEX = "documents"; // Index bei Elasticsearch ca das was eine Tabelle ist in einer relationalen Datenbank
     private static final int MAX_RESULTS = 100;
 
     // Aufbau eines Eintrags im Index: _id = documentId, Felder = title (schreibt die API) und text (schreibt der Indexing-Worker)
-    private static final String TITLE_FIELD = "title";
-    private static final String TEXT_FIELD = "text";
+    static final String TITLE_FIELD = "title";
+    static final String TEXT_FIELD = "text";
     private static final int TITLE_BOOST = 3; // Treffer im Titel zählen dreimal so viel wie Treffer im Text
 
     private final ElasticsearchClient client;
