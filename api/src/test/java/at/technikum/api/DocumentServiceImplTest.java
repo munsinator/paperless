@@ -10,6 +10,7 @@ import at.technikum.api.exceptions.StorageException;
 import at.technikum.api.repository.DocumentRepository;
 import at.technikum.api.repository.DocumentTypeRepository;
 import at.technikum.api.service.DocumentServiceImpl;
+import at.technikum.api.service.SearchService;
 import at.technikum.api.service.StorageService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -50,6 +51,9 @@ class DocumentServiceImplTest {
 
     @Mock
     private StorageService storageService;
+
+    @Mock
+    private SearchService searchService;
 
     @InjectMocks
     private DocumentServiceImpl documentService;
@@ -200,5 +204,27 @@ class DocumentServiceImplTest {
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, wrongName));
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, fakePdf));
         verifyNoInteractions(documentRepository, storageService);
+    }
+
+    @Test
+    void find_all_documents_with_query_returns_documents_in_search_order_and_skips_unknown_ids() {
+        Document first = documentWithId();
+        Document second = documentWithId();
+        UUID staleId = UUID.randomUUID();
+        List<UUID> rankedIds = List.of(second.getId(), staleId, first.getId());
+
+        when(searchService.search("rechnung")).thenReturn(rankedIds);
+        // Postgres liefert in beliebiger Reihenfolge und kennt die staleId nicht mehr
+        when(documentRepository.findAllById(rankedIds)).thenReturn(List.of(first, second));
+
+        List<Document> result = documentService.findAllDocuments(" rechnung ");
+
+        assertEquals(List.of(second, first), result);
+    }
+
+    private Document documentWithId() {
+        Document document = new Document();
+        document.setId(UUID.randomUUID());
+        return document;
     }
 }
