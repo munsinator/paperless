@@ -4,10 +4,13 @@ import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.messaging.DocumentSavedEvent;
+import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
+import at.technikum.api.exceptions.StorageException;
 import at.technikum.api.repository.DocumentRepository;
 import at.technikum.api.repository.DocumentTypeRepository;
 import at.technikum.api.service.DocumentServiceImpl;
+import at.technikum.api.service.StorageService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +19,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -23,8 +28,10 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -40,6 +47,9 @@ class DocumentServiceImplTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private StorageService storageService;
 
     @InjectMocks
     private DocumentServiceImpl documentService;
@@ -112,18 +122,71 @@ class DocumentServiceImplTest {
     }
 
     @Test
-    void save_with_file_saves_metadata_for_valid_pdf() {
+    void save_with_file_saves_metadata_and_stores_pdf_for_valid_pdf() {
         Document document = new Document();
         document.setId(UUID.randomUUID());
         document.setTitle("Rechnung");
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "rechnung.pdf", "application/pdf", "%PDF-1.7".getBytes());
+        byte[] content = "%PDF-1.7".getBytes();
+        MockMultipartFile file = new MockMultipartFile("file", "rechnung.pdf", "application/pdf", content);
         when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         Document saved = documentService.saveWithFile(document, null, file);
 
         assertEquals(LocalDate.now(), saved.getCreatedAt());
         verify(documentRepository).save(document);
+        verify(storageService).store(document.getId(), content);
+    }
+
+    @Test
+    void save_with_file_propagates_storage_failure() {
+        Document document = new Document();
+        document.setId(UUID.randomUUID());
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "rechnung.pdf", "application/pdf", "%PDF-1.7".getBytes());
+        when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new StorageException("Storage down", new RuntimeException()))
+                .when(storageService).store(any(UUID.class), any(byte[].class));
+
+        assertThrows(StorageException.class, () -> documentService.saveWithFile(document, null, file));
+    }
+
+    @Test
+    void delete_removes_document_and_stored_file() {
+        UUID id = UUID.randomUUID();
+        when(documentRepository.existsById(id)).thenReturn(true);
+
+        documentService.delete(id);
+
+        verify(documentRepository).deleteById(id);
+        verify(storageService).delete(id);
+    }
+
+    @Test
+    void delete_throws_not_found_and_skips_storage_for_unknown_document() {
+        UUID id = UUID.randomUUID();
+        when(documentRepository.existsById(id)).thenReturn(false);
+
+        assertThrows(DocumentNotFoundException.class, () -> documentService.delete(id));
+        verifyNoInteractions(storageService);
+    }
+
+    @Test
+    void load_file_returns_stream_from_storage_for_existing_document() {
+        UUID id = UUID.randomUUID();
+        InputStream content = new ByteArrayInputStream("%PDF-1.7".getBytes());
+        when(documentRepository.existsById(id)).thenReturn(true);
+        when(storageService.load(id)).thenReturn(content);
+
+        assertSame(content, documentService.loadFile(id));
+    }
+
+    @Test
+    void load_file_throws_not_found_and_skips_storage_for_unknown_document() {
+        UUID id = UUID.randomUUID();
+        when(documentRepository.existsById(id)).thenReturn(false);
+
+        assertThrows(DocumentNotFoundException.class, () -> documentService.loadFile(id));
+        verifyNoInteractions(storageService);
     }
 
     @Test
@@ -136,6 +199,6 @@ class DocumentServiceImplTest {
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, empty));
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, wrongName));
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, fakePdf));
-        verifyNoInteractions(documentRepository);
+        verifyNoInteractions(documentRepository, storageService);
     }
 }

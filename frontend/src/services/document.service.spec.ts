@@ -32,6 +32,19 @@ describe('DocumentService', () => {
         req.flush({ id: '1', title: 'Rechnung' });
     });
 
+    it('downloads the stored pdf as a blob', () => {
+        let result: Blob | undefined;
+
+        service.downloadDocument('abc-123').subscribe(blob => (result = blob));
+
+        const req = httpMock.expectOne('/api/document/abc-123/data');
+        expect(req.request.method).toBe('GET');
+        expect(req.request.responseType).toBe('blob');
+        const pdf = new Blob(['%PDF-1.7'], { type: 'application/pdf' });
+        req.flush(pdf); // simulieren die Antwort vom Server selbst
+        expect(result).toBe(pdf);
+    });
+
     it('omits the type when none is selected', () => {
         const file = new File(['%PDF-1.7'], 'x.pdf', { type: 'application/pdf' });
 

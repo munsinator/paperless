@@ -19,6 +19,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.UUID;
 import java.time.LocalDate;
@@ -225,6 +226,38 @@ class DocumentControllerTests {
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.error").value("Not Found"))
                 .andExpect(jsonPath("$.message").value("Document with ID " + missingId + " was not found."));
+    }
+
+    @Test
+    void get_document_data_returns_pdf_named_after_stored_title() throws Exception {
+        UUID documentId = UUID.randomUUID();
+        Document document = new Document();
+        document.setId(documentId);
+        document.setTitle("Semesterrechnung");
+        byte[] content = "%PDF-1.7 content".getBytes();
+        when(documentService.findDocumentById(documentId)).thenReturn(document);
+        when(documentService.loadFile(documentId)).thenReturn(new ByteArrayInputStream(content));
+
+        // HTTP Request mocken
+        mockMvc.perform(get("/document/{documentId}/data", documentId))
+                .andExpect(status().isOk())
+                .andExpect(content().contentType("application/pdf"))
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.startsWith("attachment")))
+                .andExpect(header().string("Content-Disposition",
+                        org.hamcrest.Matchers.containsString("Semesterrechnung.pdf")))
+                .andExpect(content().bytes(content));
+    }
+
+    @Test
+    void get_document_data_of_missing_document_returns_not_found() throws Exception {
+        UUID missingId = UUID.randomUUID();
+        when(documentService.findDocumentById(missingId)).thenThrow(new DocumentNotFoundException(missingId));
+
+        mockMvc.perform(get("/document/{documentId}/data", missingId))
+                .andExpect(status().isNotFound());
+
+        verify(documentService, never()).loadFile(any());
     }
 
     @Test
