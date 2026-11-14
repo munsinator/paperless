@@ -18,6 +18,41 @@ services:
       retries: 12
       start_period: 20s
 
+  paperless-storage:
+    image: pgsty/silo:RELEASE.2026-11-09T00-00-00Z
+    container_name: paperless-silo
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000" # S3 API
+      - "9001:9001" # Web console
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY}
+    healthcheck:
+      test: ["CMD", "curl", "-fs", "http://localhost:9000/minio/health/live"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+
+  paperless-search:
+    image: docker.elastic.co/elasticsearch/elasticsearch:9.4.5
+    container_name: paperless-elasticsearch
+    ports:
+      - "9200:9200"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false" # trusted Docker network
+      ES_JAVA_OPTS: -Xms1g -Xmx1g
+    volumes:
+      - es_data:/usr/share/elasticsearch/data
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
+      interval: 10s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
   paperless-web-ui:
     build: ./frontend
     container_name: paperless-web-ui
@@ -38,10 +73,19 @@ services:
       RABBIT_USER: ${RABBIT_USER}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       RABBIT_VHOST: ${RABBIT_VHOST}
+      MINIO_ENDPOINT: http://paperless-storage:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+      SPRING_ELASTICSEARCH_URIS: http://paperless-search:9200
     depends_on:
       postgres:
         condition: service_healthy
       paperless-mq:
+        condition: service_healthy
+      paperless-storage:
+        condition: service_healthy
+      paperless-search:
         condition: service_healthy
 
   ocr-worker:
@@ -76,4 +120,5 @@ services:
 
 volumes:
   postgres_data:
+  es_data:
   #paperless-mq-data:
