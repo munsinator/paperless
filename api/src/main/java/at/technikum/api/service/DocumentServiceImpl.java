@@ -2,6 +2,7 @@ package at.technikum.api.service;
 
 import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
+import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
@@ -52,6 +53,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document savedDocument = documentRepository.save(document);
 
         log.info("Saved Document: {}", savedDocument.getId());
+        saveTitleInSearchIndex(savedDocument);
 
         eventPublisher.publishEvent(new DocumentSavedEvent(
                 savedDocument.getId().toString()));
@@ -131,6 +133,15 @@ public class DocumentServiceImpl implements DocumentService {
     public Document findDocumentById(UUID documentId) {
         return documentRepository.findById(documentId)
                 .orElseThrow(() -> new DocumentNotFoundException(documentId));
+    }
+
+    // ein Fehler im Suchindex darf das Speichern in der Datenbank nicht blockieren
+    private void saveTitleInSearchIndex(Document document) {
+        try {
+            searchService.saveTitle(document.getId(), document.getTitle());
+        } catch (SearchException exception) {
+            log.warn("Title of document {} could not be saved in the search index", document.getId(), exception);
+        }
     }
 
     private DocumentType resolveType(DocumentTypeEnum requestedType) {
