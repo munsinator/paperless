@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -20,6 +21,11 @@ public class ElasticSearchService implements SearchService {
 
     private static final String INDEX = "documents"; // Index bei Elasticsearch ca das was eine Tabelle ist in einer relationalen Datenbank
     private static final int MAX_RESULTS = 100;
+
+    // Aufbau eines Eintrags im Index: _id = documentId, Felder = title (schreibt die API) und text (schreibt der Indexing-Worker)
+    private static final String TITLE_FIELD = "title";
+    private static final String TEXT_FIELD = "text";
+    private static final int TITLE_BOOST = 3; // Treffer im Titel zählen dreimal so viel wie Treffer im Text
 
     private final ElasticsearchClient client;
 
@@ -34,7 +40,7 @@ public class ElasticSearchService implements SearchService {
                     .source(source -> source.fetch(false)) // keine Metadaten
                     .query(q -> q.multiMatch(match -> match // gleichzeitig in mehreren Feldern suchen
                             .query(query)
-                            .fields("title^3", "text") // Treffer im Feld title dreimal so stark gewichtet werden wie Treffer im Feld text
+                            .fields(TITLE_FIELD + "^" + TITLE_BOOST, TEXT_FIELD)
                             .fuzziness("AUTO"))), Void.class); // fehlertolerante Suche
 
             List<UUID> ids = response.hits().hits().stream()
@@ -50,7 +56,17 @@ public class ElasticSearchService implements SearchService {
 
     @Override
     public void saveTitle(UUID documentId, String title) {
-        throw new UnsupportedOperationException("Implemented in #76");
+        log.debug("Saving title of document {} in index '{}'", documentId, INDEX);
+        try {
+            client.update(update -> update
+                    .index(INDEX)
+                    .id(documentId.toString())
+                    .doc(Map.of(TITLE_FIELD, title)) // "Aktualisiere das Feld title des Elasticsearch-Dokuments"
+                    .docAsUpsert(true), Void.class);
+            log.info("Saved title of document {} in search index", documentId);
+        } catch (IOException | ElasticsearchException exception) {
+            throw new SearchException("Saving title in Elasticsearch failed", exception);
+        }
     }
 
     @Override
