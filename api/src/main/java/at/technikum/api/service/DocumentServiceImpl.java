@@ -2,7 +2,6 @@ package at.technikum.api.service;
 
 import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
-import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
@@ -53,7 +52,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document savedDocument = documentRepository.save(document);
 
         log.info("Saved Document: {}", savedDocument.getId());
-        saveTitleInSearchIndex(savedDocument);
+        eventPublisher.publishEvent(new DocumentTitleChangedEvent(savedDocument.getId(), savedDocument.getTitle()));
 
         eventPublisher.publishEvent(new DocumentSavedEvent(
                 savedDocument.getId().toString()));
@@ -88,8 +87,7 @@ public class DocumentServiceImpl implements DocumentService {
         document.setType(resolveType(requestedType));
 
         Document recentlyUpdatedDocument =  documentRepository.save(document);
-        // bewusst bei jedem Update (nicht nur bei Titeländerung): holt einen früher fehlgeschlagenen Index-Eintrag nach; bei der Menge von Dokumenten ist das vetretbar
-        saveTitleInSearchIndex(recentlyUpdatedDocument);
+        eventPublisher.publishEvent(new DocumentTitleChangedEvent(recentlyUpdatedDocument.getId(), recentlyUpdatedDocument.getTitle()));
         //TODO: Ask if it's intended to publish an event also when updating a document
         /*
         eventPublisher.publishEvent(
@@ -111,7 +109,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         documentRepository.deleteById(documentId);
         storageService.delete(documentId);
-        deleteFromSearchIndex(documentId);
+        eventPublisher.publishEvent(new DocumentDeletedEvent(documentId));
         log.info("Deleted Document: {}", documentId);
     }
 
@@ -136,23 +134,6 @@ public class DocumentServiceImpl implements DocumentService {
     public Document findDocumentById(UUID documentId) {
         return documentRepository.findById(documentId)
                 .orElseThrow(() -> new DocumentNotFoundException(documentId));
-    }
-
-    // ein Fehler im Suchindex darf das Speichern in der Datenbank nicht blockieren
-    private void saveTitleInSearchIndex(Document document) {
-        try {
-            searchService.saveTitle(document.getId(), document.getTitle());
-        } catch (SearchException exception) {
-            log.warn("Title of document {} could not be saved in the search index", document.getId(), exception);
-        }
-    }
-
-    private void deleteFromSearchIndex(UUID documentId) {
-        try {
-            searchService.delete(documentId);
-        } catch (SearchException exception) {
-            log.warn("Document {} could not be deleted from the search index", documentId, exception);
-        }
     }
 
     private DocumentType resolveType(DocumentTypeEnum requestedType) {
