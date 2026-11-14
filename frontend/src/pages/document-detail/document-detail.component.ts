@@ -44,6 +44,7 @@ export class DocumentDetailComponent {
     readonly activeTab = signal<'metadata' | 'ai'>('metadata');
     readonly isSaving = signal<boolean>(false);
     readonly isDeleting = signal<boolean>(false);
+    readonly isDownloading = signal<boolean>(false);
     readonly saveSuccess = signal<boolean>(false);
 
     readonly documentTypes = DOCUMENT_TYPE_OPTIONS;
@@ -110,6 +111,34 @@ export class DocumentDetailComponent {
                 this.notifications.httpError(err, 'delete');
             }
         });
+    }
+
+    onDownload(): void {
+        const id = this.documentId();
+        const title = this.document()?.title;
+        if (!id || !title) return;
+
+        this.isDownloading.set(true);
+        this.documentService.downloadDocument(id).subscribe({
+            next: blob => {
+                this.isDownloading.set(false);
+                this.saveFile(blob, `${title}.pdf`);
+            },
+            error: (err) => {
+                this.isDownloading.set(false);
+                this.notifications.httpError(err, 'download');
+            }
+        });
+    }
+
+    // löst den Browser-Download aus: unsichtbarer Link auf eine temporäre URL des Blobs
+    private saveFile(blob: Blob, filename: string): void {
+        const url = URL.createObjectURL(blob);
+        const link = window.document.createElement('a');
+        link.href = url;
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(url);
     }
 
     // rxResource verpackt Fehler manchmal in einen Wrapper-Error mit dem Original in cause
