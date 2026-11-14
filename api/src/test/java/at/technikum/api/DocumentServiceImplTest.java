@@ -81,6 +81,7 @@ class DocumentServiceImplTest {
                 org.mockito.ArgumentMatchers.argThat(savedType ->
                         savedType.getType() == DocumentTypeEnum.RECEIPT));
         verify(documentRepository).save(document);
+        verify(searchService).saveTitle(document.getId(), "Semesterrechnung");
         verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.argThat(
                 (Object event) -> event instanceof DocumentSavedEvent savedEvent
                         && savedEvent.getDocumentId().equals(document.getId().toString())));
@@ -124,7 +125,41 @@ class DocumentServiceImplTest {
         assertEquals(createdAt, savedDocument.getCreatedAt());
         assertNotNull(savedDocument.getId());
         verify(documentRepository).save(current);
+        verify(searchService).saveTitle(id, "Neue Rechnung");
         verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
+    void save_still_saves_and_publishes_event_when_search_index_fails() {
+        Document document = new Document();
+        document.setId(UUID.randomUUID());
+        document.setTitle("Rechnung");
+        when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new SearchException("down", new IOException()))
+                .when(searchService).saveTitle(document.getId(), "Rechnung");
+
+        Document savedDocument = documentService.save(document, null);
+
+        assertSame(document, savedDocument);
+        verify(eventPublisher).publishEvent(any(DocumentSavedEvent.class));
+    }
+
+    @Test
+    void update_still_saves_when_search_index_fails() {
+        UUID id = UUID.randomUUID();
+        Document current = new Document();
+        current.setId(id);
+        Document update = new Document();
+        update.setTitle("Neue Rechnung");
+        when(documentRepository.findById(id)).thenReturn(Optional.of(current));
+        when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new SearchException("down", new IOException()))
+                .when(searchService).saveTitle(id, "Neue Rechnung");
+
+        Document savedDocument = documentService.update(id, update, null);
+
+        assertEquals("Neue Rechnung", savedDocument.getTitle());
+        verify(documentRepository).save(current);
     }
 
     @Test
@@ -165,6 +200,19 @@ class DocumentServiceImplTest {
 
         verify(documentRepository).deleteById(id);
         verify(storageService).delete(id);
+        verify(searchService).delete(id);
+    }
+
+    @Test
+    void delete_still_removes_document_when_search_index_fails() {
+        UUID id = UUID.randomUUID();
+        when(documentRepository.existsById(id)).thenReturn(true);
+        doThrow(new SearchException("down", new IOException())).when(searchService).delete(id);
+
+        documentService.delete(id);
+
+        verify(documentRepository).deleteById(id);
+        verify(storageService).delete(id);
     }
 
     @Test
@@ -173,7 +221,7 @@ class DocumentServiceImplTest {
         when(documentRepository.existsById(id)).thenReturn(false);
 
         assertThrows(DocumentNotFoundException.class, () -> documentService.delete(id));
-        verifyNoInteractions(storageService);
+        verifyNoInteractions(storageService, searchService);
     }
 
     @Test
