@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
 
 import java.io.IOException;
@@ -22,6 +23,7 @@ import static at.technikum.api.service.ElasticSearchService.TITLE_FIELD;
  */
 @Slf4j
 @Component
+@Order(1) // läuft vor dem Reindex, damit der Index sein Mapping hat, bevor Titel geschrieben werden
 @RequiredArgsConstructor
 public class SearchIndexInitializer implements ApplicationRunner {
 
