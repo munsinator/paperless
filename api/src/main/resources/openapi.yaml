@@ -47,6 +47,14 @@ paths:
       tags:
         - document-controller
       operationId: findAll
+      parameters:
+        - name: query
+          in: query
+          required: false
+          description: Full-text and fuzzy search; without it all documents are returned
+          schema:
+            type: string
+            maxLength: 200
       responses:
         "200":
           description: OK

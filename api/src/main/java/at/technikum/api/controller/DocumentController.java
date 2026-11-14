@@ -7,6 +7,7 @@ import at.technikum.api.service.DocumentService;
 import at.technikum.api.service.DocumentServiceImpl;
 import at.technikum.api.entity.Document;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.http.ContentDisposition;
@@ -77,7 +78,7 @@ public class DocumentController {
     }
 
     @GetMapping
-    public ResponseEntity<List<ResponseDocumentDTO>> findAll(@RequestParam(required = false) String query) {
+    public ResponseEntity<List<ResponseDocumentDTO>> findAll(@RequestParam(required = false) @Size(max = 200) String query) {
         log.debug("List documents request (search: {})", query != null && !query.isBlank());
         List<ResponseDocumentDTO> documents = documentService.findAllDocuments(query).stream()
                 .map(mapper::entityToDto)
