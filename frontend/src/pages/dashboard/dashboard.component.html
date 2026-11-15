@@ -1,6 +1,6 @@
 <div class="w-full flex flex-col items-center gap-6">
     <div class="w-full">
-        <app-searchbar class="w-full block" (search)="onSearch($event)" />
+        <app-searchbar class="w-full block" [value]="q()" (search)="onSearch($event)" />
     </div>
 
     <div class="w-full flex flex-col gap-4">
