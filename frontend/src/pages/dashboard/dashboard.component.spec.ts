@@ -2,7 +2,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { Router, provideRouter, withComponentInputBinding } from '@angular/router';
 import { RouterTestingHarness } from '@angular/router/testing';
-import { Observable, of, throwError } from 'rxjs';
+import { NEVER, Observable, of, throwError } from 'rxjs';
 import { Document } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
 import { DashboardComponent } from './dashboard.component';
@@ -15,7 +15,8 @@ describe('DashboardComponent', () => {
     let getDocuments: ReturnType<typeof vi.fn<(query?: string) => Observable<Document[]>>>;
     let harness: RouterTestingHarness; // für z.B. await harness.navigateByUrl('/dashboard?q=hello', DashboardComponent);
 
-    async function openDashboard(url: string): Promise<HTMLElement> {
+    // waitForStable=false für Anfragen, die absichtlich offen bleiben (die App wäre sonst nie "stabil")
+    async function openDashboard(url: string, { waitForStable = true } = {}): Promise<HTMLElement> {
         TestBed.configureTestingModule({
             providers: [
                 provideRouter([{ path: 'dashboard', component: DashboardComponent }], withComponentInputBinding()),
@@ -24,7 +25,7 @@ describe('DashboardComponent', () => {
         });
         harness = await RouterTestingHarness.create();
         await harness.navigateByUrl(url, DashboardComponent);
-        await harness.fixture.whenStable();
+        if (waitForStable) await harness.fixture.whenStable();
         harness.detectChanges();
         return harness.routeNativeElement as HTMLElement;
     }
@@ -56,6 +57,16 @@ describe('DashboardComponent', () => {
         const page = await openDashboard('/dashboard?q=hello');
 
         expect((page.querySelector('input[name="query"]') as HTMLInputElement).value).toBe('hello');
+    });
+
+    it('shows a spinner while the search is loading', async () => {
+        getDocuments.mockReturnValue(NEVER); // Anfrage bleibt offen, das Backend hat noch nicht geantwortet
+
+        const page = await openDashboard('/dashboard?q=hello', { waitForStable: false });
+
+        expect(page.querySelector('.animate-spin')).toBeTruthy();
+        expect(page.querySelector('app-document-card')).toBeNull();
+        expect(page.textContent).not.toContain('Keine Treffer');
     });
 
     it('shows a no-results message for a search without hits', async () => {
