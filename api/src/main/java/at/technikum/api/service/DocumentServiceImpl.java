@@ -20,7 +20,11 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +35,7 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentTypeRepository documentTypeRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final StorageService storageService;
+    private final SearchService searchService;
     // TODO check if mapping has to happen in controller or service
     // private final DocumentMapper mapper;
 
@@ -47,6 +52,7 @@ public class DocumentServiceImpl implements DocumentService {
         Document savedDocument = documentRepository.save(document);
 
         log.info("Saved Document: {}", savedDocument.getId());
+        eventPublisher.publishEvent(new DocumentTitleChangedEvent(savedDocument.getId(), savedDocument.getTitle()));
 
         eventPublisher.publishEvent(new DocumentSavedEvent(
                 savedDocument.getId().toString()));
@@ -76,11 +82,15 @@ public class DocumentServiceImpl implements DocumentService {
         log.debug("Updating Document: {}", documentId);
 
         Document document = findDocumentById(documentId);
+        boolean titleChanged = !Objects.equals(document.getTitle(), updatedDocument.getTitle());
         document.setTitle(updatedDocument.getTitle());
         document.setTags(updatedDocument.getTags() == null ? List.of() : updatedDocument.getTags());
         document.setType(resolveType(requestedType));
 
         Document recentlyUpdatedDocument =  documentRepository.save(document);
+        if (titleChanged) { // Tags oder Typ stehen nicht im Index; ein früher fehlgeschlagener Eintrag wird über den Reindex nachgeholt
+            eventPublisher.publishEvent(new DocumentTitleChangedEvent(recentlyUpdatedDocument.getId(), recentlyUpdatedDocument.getTitle()));
+        }
         //TODO: Ask if it's intended to publish an event also when updating a document
         /*
         eventPublisher.publishEvent(
@@ -102,6 +112,7 @@ public class DocumentServiceImpl implements DocumentService {
         }
         documentRepository.deleteById(documentId);
         storageService.delete(documentId);
+        eventPublisher.publishEvent(new DocumentDeletedEvent(documentId));
         log.info("Deleted Document: {}", documentId);
     }
 
@@ -111,7 +122,14 @@ public class DocumentServiceImpl implements DocumentService {
         if (query == null || query.isBlank()) {
             return documentRepository.findAll();
         }
-        return documentRepository.findByTitleContainingIgnoreCaseOrOcrTextContainingIgnoreCase(query, query);
+        // ES liefert die IDs nach Relevanz, die Daten kommen aus Postgres
+        List<UUID> rankedIds = searchService.search(query.trim());
+        Map<UUID, Document> documentsById = documentRepository.findAllById(rankedIds).stream()
+                .collect(Collectors.toMap(Document::getId, document -> document));
+        return rankedIds.stream() // Reihenfolge von ES wiederhergestellt
+                .map(documentsById::get) // für jede ID das passende Dokument aus documentsById
+                .filter(Objects::nonNull) // im Index, aber nicht mehr in Postgres
+                .toList();
     }
 
     @Override

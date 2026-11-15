@@ -6,10 +6,14 @@ import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.messaging.DocumentSavedEvent;
 import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
+import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.exceptions.StorageException;
 import at.technikum.api.repository.DocumentRepository;
 import at.technikum.api.repository.DocumentTypeRepository;
+import at.technikum.api.service.DocumentDeletedEvent;
 import at.technikum.api.service.DocumentServiceImpl;
+import at.technikum.api.service.DocumentTitleChangedEvent;
+import at.technikum.api.service.SearchService;
 import at.technikum.api.service.StorageService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,6 +24,7 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.List;
@@ -34,6 +39,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -50,6 +56,9 @@ class DocumentServiceImplTest {
 
     @Mock
     private StorageService storageService;
+
+    @Mock
+    private SearchService searchService;
 
     @InjectMocks
     private DocumentServiceImpl documentService;
@@ -75,6 +84,7 @@ class DocumentServiceImplTest {
                 org.mockito.ArgumentMatchers.argThat(savedType ->
                         savedType.getType() == DocumentTypeEnum.RECEIPT));
         verify(documentRepository).save(document);
+        verify(eventPublisher).publishEvent(new DocumentTitleChangedEvent(document.getId(), "Semesterrechnung"));
         verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.argThat(
                 (Object event) -> event instanceof DocumentSavedEvent savedEvent
                         && savedEvent.getDocumentId().equals(document.getId().toString())));
@@ -118,6 +128,25 @@ class DocumentServiceImplTest {
         assertEquals(createdAt, savedDocument.getCreatedAt());
         assertNotNull(savedDocument.getId());
         verify(documentRepository).save(current);
+        verify(eventPublisher).publishEvent(new DocumentTitleChangedEvent(id, "Neue Rechnung"));
+        verifyNoMoreInteractions(eventPublisher); // kein DocumentSavedEvent: ein Update startet keine neue OCR
+    }
+
+    @Test
+    void update_does_not_touch_search_index_when_title_is_unchanged() {
+        UUID id = UUID.randomUUID();
+        Document current = new Document();
+        current.setId(id);
+        current.setTitle("Rechnung");
+        Document update = new Document();
+        update.setTitle("Rechnung");
+        update.setTags(List.of("Neu"));
+        when(documentRepository.findById(id)).thenReturn(Optional.of(current));
+        when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        documentService.update(id, update, null);
+
+        verify(documentRepository).save(current);
         verifyNoInteractions(eventPublisher);
     }
 
@@ -159,6 +188,7 @@ class DocumentServiceImplTest {
 
         verify(documentRepository).deleteById(id);
         verify(storageService).delete(id);
+        verify(eventPublisher).publishEvent(new DocumentDeletedEvent(id));
     }
 
     @Test
@@ -167,7 +197,7 @@ class DocumentServiceImplTest {
         when(documentRepository.existsById(id)).thenReturn(false);
 
         assertThrows(DocumentNotFoundException.class, () -> documentService.delete(id));
-        verifyNoInteractions(storageService);
+        verifyNoInteractions(storageService, eventPublisher);
     }
 
     @Test
@@ -200,5 +230,48 @@ class DocumentServiceImplTest {
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, wrongName));
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, fakePdf));
         verifyNoInteractions(documentRepository, storageService);
+    }
+
+    @Test
+    void find_all_documents_with_query_returns_documents_in_search_order_and_skips_unknown_ids() {
+        Document first = documentWithId();
+        Document second = documentWithId();
+        UUID staleId = UUID.randomUUID();
+        List<UUID> rankedIds = List.of(second.getId(), staleId, first.getId());
+
+        when(searchService.search("rechnung")).thenReturn(rankedIds);
+        // Postgres liefert in beliebiger Reihenfolge und kennt die staleId nicht mehr
+        when(documentRepository.findAllById(rankedIds)).thenReturn(List.of(first, second));
+
+        List<Document> result = documentService.findAllDocuments(" rechnung ");
+
+        assertEquals(List.of(second, first), result);
+    }
+
+    @Test
+    void find_all_documents_without_query_returns_all_documents_and_skips_search() {
+        List<Document> allDocuments = List.of(documentWithId(), documentWithId());
+        when(documentRepository.findAll()).thenReturn(allDocuments);
+
+        assertEquals(allDocuments, documentService.findAllDocuments(null));
+        assertEquals(allDocuments, documentService.findAllDocuments("   "));
+
+        verifyNoInteractions(searchService);
+    }
+
+    @Test
+    void find_all_documents_propagates_search_failure_without_touching_database() {
+        when(searchService.search("rechnung"))
+                .thenThrow(new SearchException("Search in Elasticsearch failed", new IOException("down")));
+
+        assertThrows(SearchException.class, () -> documentService.findAllDocuments("rechnung"));
+
+        verifyNoInteractions(documentRepository);
+    }
+
+    private Document documentWithId() {
+        Document document = new Document();
+        document.setId(UUID.randomUUID());
+        return document;
     }
 }

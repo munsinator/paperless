@@ -6,6 +6,7 @@ import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
+import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.mapper.DocumentMapperImpl;
 import at.technikum.api.service.JwtService;
 import at.technikum.api.service.UserService;
@@ -63,6 +64,24 @@ class DocumentControllerTests {
                 .andExpect(content().json("[]"));
 
         verify(documentService).findAllDocuments("invoice");
+    }
+
+    @Test
+    void get_documents_rejects_search_query_longer_than_200_characters() throws Exception {
+        mockMvc.perform(get("/document").param("query", "a".repeat(201)))
+                .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(documentService);
+    }
+
+    @Test
+    void get_documents_returns_503_when_search_is_unavailable() throws Exception {
+        when(documentService.findAllDocuments("invoice"))
+                .thenThrow(new SearchException("Search in Elasticsearch failed", new RuntimeException("down")));
+
+        mockMvc.perform(get("/document").param("query", "invoice"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503));
     }
 
     @Test

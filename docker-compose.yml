@@ -80,6 +80,7 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET}
       SPRING_ELASTICSEARCH_URIS: http://paperless-search:9200
+      SEARCH_REINDEX_ON_STARTUP: ${SEARCH_REINDEX_ON_STARTUP:-false}
     depends_on:
       postgres:
         condition: service_healthy
