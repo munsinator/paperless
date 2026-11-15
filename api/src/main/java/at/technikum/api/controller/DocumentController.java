@@ -42,7 +42,7 @@ public class DocumentController {
         log.debug("Create document request: title={}", requestDocumentDTO.getTitle());
         Document entityToSave = mapper.dtoToEntity(requestDocumentDTO);
         Document savedEntity = documentService.save(entityToSave, requestDocumentDTO.getType());
-        return new ResponseEntity<>(mapper.entityToDto(savedEntity), HttpStatus.CREATED);
+        return createdResponse(savedEntity);
     }
 
     // Upload mit der eigentlichen PDF-Datei: multipart/form-data mit file, title, type und tags.
@@ -59,7 +59,13 @@ public class DocumentController {
                 requestDocumentDTO.getTitle(), file.getOriginalFilename(), file.getSize());
         Document entityToSave = mapper.dtoToEntity(requestDocumentDTO);
         Document savedEntity = documentService.saveWithFile(entityToSave, requestDocumentDTO.getType(), file);
-        return new ResponseEntity<>(mapper.entityToDto(savedEntity), HttpStatus.CREATED);
+        return createdResponse(savedEntity);
+    }
+
+    private ResponseEntity<ResponseDocumentDTO> createdResponse(Document document) {
+        var location = org.springframework.web.servlet.support.ServletUriComponentsBuilder
+                .fromCurrentRequest().path("/{id}").buildAndExpand(document.getId()).toUri();
+        return ResponseEntity.created(location).body(mapper.entityToDto(document));
     }
 
     @PutMapping("/{documentId}")
@@ -87,7 +93,7 @@ public class DocumentController {
                 .map(mapper::entityToDto)
                 .toList();
 
-        return ResponseEntity.ok(documents);
+        return documents.isEmpty() ? ResponseEntity.noContent().build() : ResponseEntity.ok(documents);
     }
 
     @GetMapping("/{documentId}")
@@ -115,5 +121,12 @@ public class DocumentController {
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, disposition.toString())
                 .body(new InputStreamResource(documentService.loadFile(documentId)));
+    }
+
+    @DeleteMapping("/{documentId}/data")
+    public ResponseEntity<String> deleteData(@PathVariable UUID documentId) {
+        log.warn("Delete document data request not implemented: id={}", documentId);
+        //TODO: Create minIO service to delete data
+        return ResponseEntity.status(HttpStatus.NOT_IMPLEMENTED).build();
     }
 }

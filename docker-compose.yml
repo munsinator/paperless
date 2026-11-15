@@ -9,8 +9,8 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
       RABBITMQ_DEFAULT_VHOST: ${RABBIT_VHOST}
-    #volumes:
-    #  - paperless-mq-data:/var/lib/rabbitmq
+    volumes:
+      - paperless-mq-data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 10s
@@ -49,11 +49,11 @@ services:
     volumes:
       - es_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
+      test: ["CMD", "curl", "-fsS", "--max-time", "8", "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s"]
       interval: 10s
       timeout: 10s
       retries: 12
-      start_period: 30s
+      start_period: 180s
 
   paperless-web-ui:
     build: ./frontend
@@ -61,11 +61,20 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - paperless-rest
+      paperless-rest:
+        condition: service_healthy
 
   paperless-rest:
     build: ./api
     container_name: paperless-api
+    volumes:
+      - document_data:/data/documents
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 30s
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/paperless
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
@@ -99,8 +108,16 @@ services:
       RABBIT_USER: ${RABBIT_USER}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       RABBIT_VHOST: ${RABBIT_VHOST}
+      MINIO_ENDPOINT: http://paperless-storage:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-documents}
     depends_on:
+      paperless-rest:
+        condition: service_healthy
       paperless-mq:
+        condition: service_healthy
+      paperless-storage:
         condition: service_healthy
 
   postgres:
@@ -125,4 +142,5 @@ volumes:
   postgres_data:
   silo_data:
   es_data:
-  #paperless-mq-data:
+  paperless-mq-data:
+  document_data:

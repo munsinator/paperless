@@ -55,7 +55,7 @@ public class DocumentServiceImpl implements DocumentService {
         eventPublisher.publishEvent(new DocumentTitleChangedEvent(savedDocument.getId(), savedDocument.getTitle()));
 
         eventPublisher.publishEvent(new DocumentSavedEvent(
-                savedDocument.getId().toString()));
+                savedDocument.getId().toString(), savedDocument.getTitle()));
         return savedDocument;
     }
 

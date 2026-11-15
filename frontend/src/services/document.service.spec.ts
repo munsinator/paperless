@@ -32,6 +32,14 @@ describe('DocumentService', () => {
         req.flush({ id: '1', title: 'Rechnung' });
     });
 
+    it('maps a 204 response to an empty document list', () => {
+        let result: unknown;
+        service.getDocuments().subscribe(documents => result = documents);
+        httpMock.expectOne('/api/document').flush(null, { status: 204, statusText: 'No Content' });
+        expect(result).toEqual([]);
+        httpMock.verify();
+    });
+
     it('downloads the stored pdf as a blob', () => {
         let result: Blob | undefined;
 

@@ -39,8 +39,8 @@ export class DocumentService {
     getDocuments(query = ''): Observable<Document[]> {
         const params = query ? new HttpParams().set('query', query) : undefined;
         this.logger.debug(SOURCE,`Loading documents (search: ${query !== ''})`);
-        return this.http.get<ApiDocument[]>(this.apiUrl, { params })
-            .pipe(map(documents => documents.map(document => this.toDocument(document))));
+        return this.http.get<ApiDocument[] | null>(this.apiUrl, { params })
+            .pipe(map(documents => (documents ?? []).map(document => this.toDocument(document))));
     }
 
     getDocumentById(id: string): Observable<Document> {

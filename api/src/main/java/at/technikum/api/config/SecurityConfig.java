@@ -45,7 +45,7 @@ public class SecurityConfig {
                         .authenticationEntryPoint(new HttpStatusEntryPoint(HttpStatus.UNAUTHORIZED)))
                 .authenticationProvider(authenticationProvider)
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/users", "/sessions").permitAll()
+                        .requestMatchers("/users", "/sessions", "/health").permitAll()
                         // Error-Dispatch (400/409/... aus sendError) darf nicht zu 401 werden; JwtAuthFilter läuft dort nicht
                         .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
@@ -56,7 +56,8 @@ public class SecurityConfig {
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200", "http://127.0.0.1:4200"));
+        configuration.setAllowedOrigins(List.of("http://localhost", "http://127.0.0.1",
+                "http://localhost:4200", "http://127.0.0.1:4200"));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept", "X-Requested-With"));
         configuration.setAllowCredentials(true);

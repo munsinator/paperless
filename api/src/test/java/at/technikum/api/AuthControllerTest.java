@@ -25,6 +25,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({SecurityConfig.class, JwtAuthFilter.class})
 class AuthControllerTest {
 
+    @Test
+    void rejects_username_with_whitespace() throws Exception {
+        mockMvc.perform(post("/users").contentType("application/json")
+                        .content("{\"username\":\"a    b\",\"password\":\"secure-password\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(userService);
+    }
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -40,6 +48,8 @@ class AuthControllerTest {
     @Test
     void register_posts_to_users_collection() throws Exception {
         mockMvc.perform(post("/users")
+                        .header("Origin", "http://localhost")
+                        .with(request -> { request.setServerPort(8081); return request; })
                         .contentType("application/json")
                         .content("""
                                 {"username":"paperless-user","password":"secure-password"}

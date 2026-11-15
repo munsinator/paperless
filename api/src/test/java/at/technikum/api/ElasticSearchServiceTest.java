@@ -106,6 +106,31 @@ class ElasticSearchServiceTest {
         assertThrows(SearchException.class, () -> searchService.delete(UUID.randomUUID()));
     }
 
+    @Test
+    @SuppressWarnings("unchecked")
+    void save_text_updates_only_text_and_supports_ocr_arriving_before_title() throws IOException {
+        UUID id = UUID.randomUUID();
+        org.mockito.Mockito.doAnswer(invocation -> {
+            Function<co.elastic.clients.elasticsearch.core.UpdateRequest.Builder<Void, java.util.Map<String, String>>,
+                    ObjectBuilder<co.elastic.clients.elasticsearch.core.UpdateRequest<Void, java.util.Map<String, String>>>> builder = invocation.getArgument(0);
+            var request = builder.apply(new co.elastic.clients.elasticsearch.core.UpdateRequest.Builder<>()).build();
+            assertEquals("documents", request.index());
+            assertEquals(id.toString(), request.id());
+            assertEquals(java.util.Map.of("text", "Hello World"), request.doc());
+            assertEquals(Boolean.TRUE, request.docAsUpsert());
+            return null;
+        }).when(client).update(any(Function.class), eq(Void.class));
+        searchService.saveText(id, "Hello World");
+        verify(client).update(any(Function.class), eq(Void.class));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void save_text_wraps_connection_failure() throws IOException {
+        when(client.update(any(Function.class), eq(Void.class))).thenThrow(new IOException("unavailable"));
+        assertThrows(SearchException.class, () -> searchService.saveText(UUID.randomUUID(), "Hello World"));
+    }
+
     private void mockResponse(SearchResponse<Void> response) throws IOException {
         when(client.search(anySearch(), eq(Void.class))).thenReturn(response);
     }
