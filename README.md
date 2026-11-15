@@ -1,7 +1,7 @@
 # Paperless
 
 A document-management study project built with Angular, Spring Boot, PostgreSQL, and RabbitMQ.
-The current implementation supports user registration and login, document metadata management, search, and asynchronous notification of an OCR worker when a document is created.
+The current implementation supports user registration and login, document metadata management, search, and asynchronous PDF OCR using Tesseract (English and German).
 
 ## Components 
 
@@ -28,7 +28,7 @@ All paths below use the host prefix `http://localhost/api`. Document endpoints r
 | --- | --- | --- |
 | POST | `/users` | Register with `username` and `password` |
 | POST | `/sessions` | Log in and receive a JWT |
-| POST | `/document` | Create metadata and trigger a document-saved event |
+| POST | `/document` | Create metadata (JSON), or upload a PDF and trigger OCR (multipart) |
 | GET | `/document` | List documents; optional `?query=...` searches title and OCR text |
 | GET | `/document/{id}` | Read document metadata |
 | PUT | `/document/{id}` | Replace editable metadata |
@@ -118,3 +118,25 @@ npm test -- --watch=false
 ## Lessons learned
 - Think of logging messages early and design them in a way they are easily traceable.
 - Think of tests early!
+## OCR and startup troubleshooting
+
+Start with `docker compose up -d --build --wait`. The web UI now waits for the API health check.
+
+PDF uploads are stored in the `document_data` volume. The API publishes a document ID after the database transaction commits; the worker reads `/data/documents/<id>.pdf`, renders each page with PDFBox, runs Tesseract, and publishes the result. The API saves the result in `ocrText`. Refresh the document after processing to see the text. Metadata-only JSON requests do not run OCR. Previously uploaded files were discarded, so upload those PDFs again.
+
+The worker image includes Tesseract and English/German language data. For execution outside Docker, configure `documents.storage-path` identically in both Java applications and install Tesseract with `TESSDATA_PREFIX` pointing to its language data.
+
+Registration failures have different causes:
+
+- 502/503/504: the API is starting or unavailable. Previously nginx started before the API was ready. nginx now also refreshes Docker DNS after an API container replacement.
+- 403 on browser POST requests: the old CORS configuration only allowed the Angular development origin (port 4200). Docker UI origins `http://localhost` and `http://127.0.0.1` are now allowed too.
+- 409: the username already exists. Rebuilding images and `docker compose down` preserve the PostgreSQL volume and accounts; log in to an existing account.
+
+Use `docker compose logs --tail 100 paperless-rest ocr-worker paperless-web-ui` for details. Do not use `down -v` to fix startup: it deletes stored users/documents and broker data.
+
+RabbitMQ data is now persistent, and both services declare the job/result queues so startup order does not lose messages. Listener failures retry three times before rejection; inspect logs and re-upload if processing fails. Publication still has no transactional outbox, so an extended broker outage during upload can leave a document without an OCR job. File download/deletion endpoints remain unimplemented.
+`node scripts/smoke-ocr.cjs` runs a local end-to-end check using `hello-world.pdf`: registration, duplicate rejection, login, upload, OCR persistence, and search. It creates a uniquely named test account and sample document.
+
+### Tess4J im OCR-Container
+
+Der Worker verwendet Tess4J 4.5.5 mit den nativen Tesseract-4.1.x-Bibliotheken von Ubuntu Jammy. PDFBox 3.0.8 rendert die PDF-Seiten; die Texterkennung erfolgt mit `Tesseract.doOCR(BufferedImage)` direkt aus Java. Ghost4J ist ausgeschlossen, weil die PDF-Konvertierung bereits PDFBox übernimmt. Ein Upgrade von Tess4J muss zu den nativen Tesseract-/Leptonica-Versionen im Image passen.

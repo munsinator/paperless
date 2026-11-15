@@ -1,18 +1,26 @@
 package at.technikum.ocrworker.messaging;
 
+import at.technikum.ocrworker.services.OcrService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.ExchangeTypes;
 import org.springframework.amqp.rabbit.annotation.Exchange;
 import org.springframework.amqp.rabbit.annotation.Queue;
 import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 
 @Component
 @Slf4j
+
 public class DocumentSavedListener extends EventListener<DocumentSavedEvent>{
-    public DocumentSavedListener() {}
+    private final OcrService ocrService;
+
+    @Autowired
+    public DocumentSavedListener(OcrService ocrService) {
+        this.ocrService = ocrService;
+    }
 
     @RabbitListener(
             bindings = @QueueBinding(
@@ -27,5 +35,11 @@ public class DocumentSavedListener extends EventListener<DocumentSavedEvent>{
     public void consume(DocumentSavedEvent event) {
         log.info("Received OCR job: documentId={}, documentName={}",
                 event.getDocumentId(), event.getDocumentName());
+
+        try {
+            ocrService.processDocument(event);
+        } catch (java.io.IOException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

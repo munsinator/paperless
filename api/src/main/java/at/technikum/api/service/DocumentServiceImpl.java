@@ -11,12 +11,17 @@ import at.technikum.api.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -29,6 +34,8 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentTypeRepository documentTypeRepository;
     private final ApplicationEventPublisher eventPublisher;
+    @Value("${documents.storage-path:/data/documents}")
+    private String storagePath = "/data/documents";
     // TODO check if mapping has to happen in controller or service
     // private final DocumentMapper mapper;
 
@@ -46,8 +53,6 @@ public class DocumentServiceImpl implements DocumentService {
 
         log.info("Saved Document: {}", savedDocument.getId());
 
-        eventPublisher.publishEvent(new DocumentSavedEvent(
-                savedDocument.getId().toString()));
         return savedDocument;
     }
 
@@ -55,7 +60,28 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public Document saveWithFile(Document document, DocumentTypeEnum requestedType, MultipartFile file) {
         validatePdf(file);
-        return save(document, requestedType);
+        Document saved = save(document, requestedType);
+        Path target = Path.of(storagePath, saved.getId() + ".pdf");
+        TransactionSynchronizationManager.registerSynchronization(
+                new TransactionSynchronization() {
+                    @Override
+                    public void afterCompletion(int status) {
+                        if (status != STATUS_COMMITTED) {
+                            try { Files.deleteIfExists(target); }
+                            catch (IOException exception) { log.warn("Could not remove rolled-back upload", exception); }
+                        }
+                    }
+                });
+        try {
+            Files.createDirectories(target.getParent());
+            try (var input = file.getInputStream()) {
+                Files.copy(input, target);
+            }
+        } catch (IOException exception) {
+            throw new IllegalStateException("Could not store uploaded PDF", exception);
+        }
+        eventPublisher.publishEvent(new DocumentSavedEvent(saved.getId().toString(), saved.getTitle()));
+        return saved;
     }
 
     @Override
@@ -124,8 +150,8 @@ public class DocumentServiceImpl implements DocumentService {
         if (filename == null || !filename.toLowerCase().endsWith(".pdf")) {
             throw new InvalidFileException("Only PDF files are supported");
         }
-        try {
-            byte[] header = file.getInputStream().readNBytes(5);
+        try (var input = file.getInputStream()) {
+            byte[] header = input.readNBytes(5);
             if (!new String(header, StandardCharsets.US_ASCII).equals("%PDF-")) {
                 throw new InvalidFileException("The file is not a valid PDF");
             }

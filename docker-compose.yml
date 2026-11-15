@@ -9,8 +9,8 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBIT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBIT_PASSWORD}
       RABBITMQ_DEFAULT_VHOST: ${RABBIT_VHOST}
-    #volumes:
-    #  - paperless-mq-data:/var/lib/rabbitmq
+    volumes:
+      - paperless-mq-data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "check_running"]
       interval: 10s
@@ -24,11 +24,20 @@ services:
     ports:
       - "80:80"
     depends_on:
-      - paperless-rest
+      paperless-rest:
+        condition: service_healthy
 
   paperless-rest:
     build: ./api
     container_name: paperless-api
+    volumes:
+      - document_data:/data/documents
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8081/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 24
+      start_period: 30s
     environment:
       SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/paperless
       SPRING_DATASOURCE_USERNAME: ${SPRING_DATASOURCE_USERNAME}
@@ -47,6 +56,8 @@ services:
   ocr-worker:
     build: ./ocr-worker
     container_name: paperless-ocr
+    volumes:
+      - document_data:/data/documents:ro
     environment:
       SPRING_RABBITMQ_HOST: paperless-mq
       RABBIT_USER: ${RABBIT_USER}
@@ -76,4 +87,5 @@ services:
 
 volumes:
   postgres_data:
-  #paperless-mq-data:
+  paperless-mq-data:
+  document_data:

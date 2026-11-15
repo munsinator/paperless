@@ -65,9 +65,7 @@ class DocumentServiceImplTest {
                 org.mockito.ArgumentMatchers.argThat(savedType ->
                         savedType.getType() == DocumentTypeEnum.RECEIPT));
         verify(documentRepository).save(document);
-        verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.argThat(
-                (Object event) -> event instanceof DocumentSavedEvent savedEvent
-                        && savedEvent.getDocumentId().equals(document.getId().toString())));
+        verifyNoInteractions(eventPublisher);
     }
 
     @Test
@@ -112,7 +110,7 @@ class DocumentServiceImplTest {
     }
 
     @Test
-    void save_with_file_saves_metadata_for_valid_pdf() {
+    void save_with_file_saves_metadata_for_valid_pdf(@org.junit.jupiter.api.io.TempDir java.nio.file.Path storage) throws Exception {
         Document document = new Document();
         document.setId(UUID.randomUUID());
         document.setTitle("Rechnung");
@@ -120,7 +118,23 @@ class DocumentServiceImplTest {
                 "file", "rechnung.pdf", "application/pdf", "%PDF-1.7".getBytes());
         when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        Document saved = documentService.saveWithFile(document, null, file);
+        org.springframework.test.util.ReflectionTestUtils.setField(documentService, "storagePath", storage.toString());
+        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
+        Document saved;
+        try {
+            saved = documentService.saveWithFile(document, null, file);
+            org.junit.jupiter.api.Assertions.assertArrayEquals(file.getBytes(),
+                    java.nio.file.Files.readAllBytes(storage.resolve(document.getId() + ".pdf")));
+            verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.argThat(
+                    (Object event) -> event instanceof DocumentSavedEvent job
+                            && job.getDocumentId().equals(document.getId().toString())));
+            for (var synchronization : org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()) {
+                synchronization.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK);
+            }
+            org.junit.jupiter.api.Assertions.assertFalse(java.nio.file.Files.exists(storage.resolve(document.getId() + ".pdf")));
+        } finally {
+            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
+        }
 
         assertEquals(LocalDate.now(), saved.getCreatedAt());
         verify(documentRepository).save(document);

@@ -104,6 +104,7 @@ export class AuthComponent {
   private toMessage(error: unknown): string {
     if (error instanceof HttpErrorResponse) {
       if (error.status === 0) return 'Server nicht erreichbar.';
+      if ([502, 503, 504].includes(error.status)) return 'Server startet noch oder ist nicht erreichbar. Bitte kurz warten und erneut versuchen.';
       if (this.isLogin() && (error.status === 401 || error.status === 403)) {
         return 'Benutzername oder Passwort falsch.';
       }

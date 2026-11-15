@@ -42,7 +42,7 @@ public class DocumentController {
     }
 
     // Upload mit der eigentlichen PDF-Datei: multipart/form-data mit file, title, type und tags.
-    // Die Datei wird validiert und an das Backend übertragen, aber noch nicht gespeichert.
+    // Die Datei wird gespeichert und nach dem Commit zur OCR-Verarbeitung gemeldet.
     // consumes = welches Datenformat die Methode entgegennehmen kann
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ResponseDocumentDTO> upload(
