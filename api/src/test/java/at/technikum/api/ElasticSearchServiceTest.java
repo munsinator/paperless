@@ -46,6 +46,14 @@ class ElasticSearchServiceTest {
     }
 
     @Test
+    void search_skips_hits_whose_id_is_not_a_uuid() throws IOException {
+        UUID valid = UUID.randomUUID();
+        mockResponse(response("not-a-uuid", valid.toString()));
+
+        assertEquals(List.of(valid), searchService.search("hello"));
+    }
+
+    @Test
     void search_returns_empty_list_when_nothing_matches() throws IOException {
         mockResponse(response());
 
