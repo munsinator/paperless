@@ -76,6 +76,11 @@ export class DocumentService {
             .pipe(map(document => this.toDocument(document)));
     }
 
+    downloadDocument(id: string): Observable<Blob> {
+        this.logger.info(SOURCE,`Downloading document ${id}`);
+        return this.http.get(`${this.apiUrl}/${encodeURIComponent(id)}/data`, { responseType: 'blob' });
+    }
+
     deleteDocument(id: string): Observable<void> {
         this.logger.info(SOURCE,`Deleting document ${id}`);
         return this.http.delete<void>(`${this.apiUrl}/${encodeURIComponent(id)}`);

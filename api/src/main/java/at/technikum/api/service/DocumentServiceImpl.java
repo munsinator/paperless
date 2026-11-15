@@ -11,20 +11,20 @@ import at.technikum.api.repository.DocumentRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -34,8 +34,8 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentTypeRepository documentTypeRepository;
     private final ApplicationEventPublisher eventPublisher;
-    @Value("${documents.storage-path:/data/documents}")
-    private String storagePath = "/data/documents";
+    private final StorageService storageService;
+    private final SearchService searchService;
     // TODO check if mapping has to happen in controller or service
     // private final DocumentMapper mapper;
 
@@ -52,7 +52,10 @@ public class DocumentServiceImpl implements DocumentService {
         Document savedDocument = documentRepository.save(document);
 
         log.info("Saved Document: {}", savedDocument.getId());
+        eventPublisher.publishEvent(new DocumentTitleChangedEvent(savedDocument.getId(), savedDocument.getTitle()));
 
+        eventPublisher.publishEvent(new DocumentSavedEvent(
+                savedDocument.getId().toString()));
         return savedDocument;
     }
 
@@ -60,28 +63,17 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public Document saveWithFile(Document document, DocumentTypeEnum requestedType, MultipartFile file) {
         validatePdf(file);
-        Document saved = save(document, requestedType);
-        Path target = Path.of(storagePath, saved.getId() + ".pdf");
-        TransactionSynchronizationManager.registerSynchronization(
-                new TransactionSynchronization() {
-                    @Override
-                    public void afterCompletion(int status) {
-                        if (status != STATUS_COMMITTED) {
-                            try { Files.deleteIfExists(target); }
-                            catch (IOException exception) { log.warn("Could not remove rolled-back upload", exception); }
-                        }
-                    }
-                });
-        try {
-            Files.createDirectories(target.getParent());
-            try (var input = file.getInputStream()) {
-                Files.copy(input, target);
-            }
-        } catch (IOException exception) {
-            throw new IllegalStateException("Could not store uploaded PDF", exception);
+        Document savedDocument = save(document, requestedType);
+        storageService.store(savedDocument.getId(), readBytes(file));
+        return savedDocument;
+    }
+
+    @Override
+    public InputStream loadFile(UUID documentId) {
+        if (!documentRepository.existsById(documentId)) {
+            throw new DocumentNotFoundException(documentId);
         }
-        eventPublisher.publishEvent(new DocumentSavedEvent(saved.getId().toString(), saved.getTitle()));
-        return saved;
+        return storageService.load(documentId);
     }
 
     @Override
@@ -90,11 +82,15 @@ public class DocumentServiceImpl implements DocumentService {
         log.debug("Updating Document: {}", documentId);
 
         Document document = findDocumentById(documentId);
+        boolean titleChanged = !Objects.equals(document.getTitle(), updatedDocument.getTitle());
         document.setTitle(updatedDocument.getTitle());
         document.setTags(updatedDocument.getTags() == null ? List.of() : updatedDocument.getTags());
         document.setType(resolveType(requestedType));
 
         Document recentlyUpdatedDocument =  documentRepository.save(document);
+        if (titleChanged) { // Tags oder Typ stehen nicht im Index; ein früher fehlgeschlagener Eintrag wird über den Reindex nachgeholt
+            eventPublisher.publishEvent(new DocumentTitleChangedEvent(recentlyUpdatedDocument.getId(), recentlyUpdatedDocument.getTitle()));
+        }
         //TODO: Ask if it's intended to publish an event also when updating a document
         /*
         eventPublisher.publishEvent(
@@ -115,6 +111,8 @@ public class DocumentServiceImpl implements DocumentService {
             throw new DocumentNotFoundException(documentId);
         }
         documentRepository.deleteById(documentId);
+        storageService.delete(documentId);
+        eventPublisher.publishEvent(new DocumentDeletedEvent(documentId));
         log.info("Deleted Document: {}", documentId);
     }
 
@@ -124,7 +122,14 @@ public class DocumentServiceImpl implements DocumentService {
         if (query == null || query.isBlank()) {
             return documentRepository.findAll();
         }
-        return documentRepository.findByTitleContainingIgnoreCaseOrOcrTextContainingIgnoreCase(query, query);
+        // ES liefert die IDs nach Relevanz, die Daten kommen aus Postgres
+        List<UUID> rankedIds = searchService.search(query.trim());
+        Map<UUID, Document> documentsById = documentRepository.findAllById(rankedIds).stream()
+                .collect(Collectors.toMap(Document::getId, document -> document));
+        return rankedIds.stream() // Reihenfolge von ES wiederhergestellt
+                .map(documentsById::get) // für jede ID das passende Dokument aus documentsById
+                .filter(Objects::nonNull) // im Index, aber nicht mehr in Postgres
+                .toList();
     }
 
     @Override
@@ -142,6 +147,14 @@ public class DocumentServiceImpl implements DocumentService {
                 .orElseGet(() -> documentTypeRepository.save(new DocumentType(requestedType)));
     }
 
+    private byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException exception) {
+            throw new InvalidFileException("The uploaded file could not be read");
+        }
+    }
+
     private void validatePdf(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new InvalidFileException("The uploaded file is empty");
@@ -150,8 +163,8 @@ public class DocumentServiceImpl implements DocumentService {
         if (filename == null || !filename.toLowerCase().endsWith(".pdf")) {
             throw new InvalidFileException("Only PDF files are supported");
         }
-        try (var input = file.getInputStream()) {
-            byte[] header = input.readNBytes(5);
+        try {
+            byte[] header = file.getInputStream().readNBytes(5);
             if (!new String(header, StandardCharsets.US_ASCII).equals("%PDF-")) {
                 throw new InvalidFileException("The file is not a valid PDF");
             }

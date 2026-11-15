@@ -1,26 +1,21 @@
 package at.technikum.ocrworker.messaging;
 
 import at.technikum.ocrworker.services.OcrService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.core.ExchangeTypes;
 import org.springframework.amqp.rabbit.annotation.Exchange;
 import org.springframework.amqp.rabbit.annotation.Queue;
 import org.springframework.amqp.rabbit.annotation.QueueBinding;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 
 @Component
 @Slf4j
-
+@RequiredArgsConstructor
 public class DocumentSavedListener extends EventListener<DocumentSavedEvent>{
     private final OcrService ocrService;
-
-    @Autowired
-    public DocumentSavedListener(OcrService ocrService) {
-        this.ocrService = ocrService;
-    }
 
     @RabbitListener(
             bindings = @QueueBinding(

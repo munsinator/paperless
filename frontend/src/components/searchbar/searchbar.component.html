@@ -1,6 +1,6 @@
 <form class="w-full max-w-md min-w-[200px] mx-auto" (submit)="$event.preventDefault(); submitSearch()">
   <div class="relative flex items-center">
-    <input name="query" [(ngModel)]="query" class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md pl-3 pr-24 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-300" placeholder="Dokument suchen..." />
+    <input name="query" [(ngModel)]="query" maxlength="200" class="w-full bg-transparent placeholder:text-slate-400 text-slate-700 text-sm border border-slate-200 rounded-md pl-3 pr-24 py-2 transition duration-300 ease focus:outline-none focus:border-slate-400 hover:border-slate-300" placeholder="Dokument suchen..." />
     <div class="absolute right-1 flex items-center gap-1">
       <button class="flex items-center rounded bg-slate-800 py-1 px-2.5 border border-transparent text-center text-sm text-white transition-all hover:shadow focus:bg-slate-700 hover:bg-slate-700" type="submit">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4 mr-1.5">

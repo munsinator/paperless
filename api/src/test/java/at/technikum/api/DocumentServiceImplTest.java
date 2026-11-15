@@ -4,10 +4,17 @@ import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.messaging.DocumentSavedEvent;
+import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
+import at.technikum.api.exceptions.SearchException;
+import at.technikum.api.exceptions.StorageException;
 import at.technikum.api.repository.DocumentRepository;
 import at.technikum.api.repository.DocumentTypeRepository;
+import at.technikum.api.service.DocumentDeletedEvent;
 import at.technikum.api.service.DocumentServiceImpl;
+import at.technikum.api.service.DocumentTitleChangedEvent;
+import at.technikum.api.service.SearchService;
+import at.technikum.api.service.StorageService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -16,6 +23,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.mock.web.MockMultipartFile;
 
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
@@ -23,10 +33,13 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -40,6 +53,12 @@ class DocumentServiceImplTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private StorageService storageService;
+
+    @Mock
+    private SearchService searchService;
 
     @InjectMocks
     private DocumentServiceImpl documentService;
@@ -65,7 +84,10 @@ class DocumentServiceImplTest {
                 org.mockito.ArgumentMatchers.argThat(savedType ->
                         savedType.getType() == DocumentTypeEnum.RECEIPT));
         verify(documentRepository).save(document);
-        verifyNoInteractions(eventPublisher);
+        verify(eventPublisher).publishEvent(new DocumentTitleChangedEvent(document.getId(), "Semesterrechnung"));
+        verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.argThat(
+                (Object event) -> event instanceof DocumentSavedEvent savedEvent
+                        && savedEvent.getDocumentId().equals(document.getId().toString())));
     }
 
     @Test
@@ -106,38 +128,95 @@ class DocumentServiceImplTest {
         assertEquals(createdAt, savedDocument.getCreatedAt());
         assertNotNull(savedDocument.getId());
         verify(documentRepository).save(current);
+        verify(eventPublisher).publishEvent(new DocumentTitleChangedEvent(id, "Neue Rechnung"));
+        verifyNoMoreInteractions(eventPublisher); // kein DocumentSavedEvent: ein Update startet keine neue OCR
+    }
+
+    @Test
+    void update_does_not_touch_search_index_when_title_is_unchanged() {
+        UUID id = UUID.randomUUID();
+        Document current = new Document();
+        current.setId(id);
+        current.setTitle("Rechnung");
+        Document update = new Document();
+        update.setTitle("Rechnung");
+        update.setTags(List.of("Neu"));
+        when(documentRepository.findById(id)).thenReturn(Optional.of(current));
+        when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        documentService.update(id, update, null);
+
+        verify(documentRepository).save(current);
         verifyNoInteractions(eventPublisher);
     }
 
     @Test
-    void save_with_file_saves_metadata_for_valid_pdf(@org.junit.jupiter.api.io.TempDir java.nio.file.Path storage) throws Exception {
+    void save_with_file_saves_metadata_and_stores_pdf_for_valid_pdf() {
         Document document = new Document();
         document.setId(UUID.randomUUID());
         document.setTitle("Rechnung");
-        MockMultipartFile file = new MockMultipartFile(
-                "file", "rechnung.pdf", "application/pdf", "%PDF-1.7".getBytes());
+        byte[] content = "%PDF-1.7".getBytes();
+        MockMultipartFile file = new MockMultipartFile("file", "rechnung.pdf", "application/pdf", content);
         when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        org.springframework.test.util.ReflectionTestUtils.setField(documentService, "storagePath", storage.toString());
-        org.springframework.transaction.support.TransactionSynchronizationManager.initSynchronization();
-        Document saved;
-        try {
-            saved = documentService.saveWithFile(document, null, file);
-            org.junit.jupiter.api.Assertions.assertArrayEquals(file.getBytes(),
-                    java.nio.file.Files.readAllBytes(storage.resolve(document.getId() + ".pdf")));
-            verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.argThat(
-                    (Object event) -> event instanceof DocumentSavedEvent job
-                            && job.getDocumentId().equals(document.getId().toString())));
-            for (var synchronization : org.springframework.transaction.support.TransactionSynchronizationManager.getSynchronizations()) {
-                synchronization.afterCompletion(org.springframework.transaction.support.TransactionSynchronization.STATUS_ROLLED_BACK);
-            }
-            org.junit.jupiter.api.Assertions.assertFalse(java.nio.file.Files.exists(storage.resolve(document.getId() + ".pdf")));
-        } finally {
-            org.springframework.transaction.support.TransactionSynchronizationManager.clearSynchronization();
-        }
+        Document saved = documentService.saveWithFile(document, null, file);
 
         assertEquals(LocalDate.now(), saved.getCreatedAt());
         verify(documentRepository).save(document);
+        verify(storageService).store(document.getId(), content);
+    }
+
+    @Test
+    void save_with_file_propagates_storage_failure() {
+        Document document = new Document();
+        document.setId(UUID.randomUUID());
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "rechnung.pdf", "application/pdf", "%PDF-1.7".getBytes());
+        when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        doThrow(new StorageException("Storage down", new RuntimeException()))
+                .when(storageService).store(any(UUID.class), any(byte[].class));
+
+        assertThrows(StorageException.class, () -> documentService.saveWithFile(document, null, file));
+    }
+
+    @Test
+    void delete_removes_document_and_stored_file() {
+        UUID id = UUID.randomUUID();
+        when(documentRepository.existsById(id)).thenReturn(true);
+
+        documentService.delete(id);
+
+        verify(documentRepository).deleteById(id);
+        verify(storageService).delete(id);
+        verify(eventPublisher).publishEvent(new DocumentDeletedEvent(id));
+    }
+
+    @Test
+    void delete_throws_not_found_and_skips_storage_for_unknown_document() {
+        UUID id = UUID.randomUUID();
+        when(documentRepository.existsById(id)).thenReturn(false);
+
+        assertThrows(DocumentNotFoundException.class, () -> documentService.delete(id));
+        verifyNoInteractions(storageService, eventPublisher);
+    }
+
+    @Test
+    void load_file_returns_stream_from_storage_for_existing_document() {
+        UUID id = UUID.randomUUID();
+        InputStream content = new ByteArrayInputStream("%PDF-1.7".getBytes());
+        when(documentRepository.existsById(id)).thenReturn(true);
+        when(storageService.load(id)).thenReturn(content);
+
+        assertSame(content, documentService.loadFile(id));
+    }
+
+    @Test
+    void load_file_throws_not_found_and_skips_storage_for_unknown_document() {
+        UUID id = UUID.randomUUID();
+        when(documentRepository.existsById(id)).thenReturn(false);
+
+        assertThrows(DocumentNotFoundException.class, () -> documentService.loadFile(id));
+        verifyNoInteractions(storageService);
     }
 
     @Test
@@ -150,6 +229,49 @@ class DocumentServiceImplTest {
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, empty));
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, wrongName));
         assertThrows(InvalidFileException.class, () -> documentService.saveWithFile(document, null, fakePdf));
+        verifyNoInteractions(documentRepository, storageService);
+    }
+
+    @Test
+    void find_all_documents_with_query_returns_documents_in_search_order_and_skips_unknown_ids() {
+        Document first = documentWithId();
+        Document second = documentWithId();
+        UUID staleId = UUID.randomUUID();
+        List<UUID> rankedIds = List.of(second.getId(), staleId, first.getId());
+
+        when(searchService.search("rechnung")).thenReturn(rankedIds);
+        // Postgres liefert in beliebiger Reihenfolge und kennt die staleId nicht mehr
+        when(documentRepository.findAllById(rankedIds)).thenReturn(List.of(first, second));
+
+        List<Document> result = documentService.findAllDocuments(" rechnung ");
+
+        assertEquals(List.of(second, first), result);
+    }
+
+    @Test
+    void find_all_documents_without_query_returns_all_documents_and_skips_search() {
+        List<Document> allDocuments = List.of(documentWithId(), documentWithId());
+        when(documentRepository.findAll()).thenReturn(allDocuments);
+
+        assertEquals(allDocuments, documentService.findAllDocuments(null));
+        assertEquals(allDocuments, documentService.findAllDocuments("   "));
+
+        verifyNoInteractions(searchService);
+    }
+
+    @Test
+    void find_all_documents_propagates_search_failure_without_touching_database() {
+        when(searchService.search("rechnung"))
+                .thenThrow(new SearchException("Search in Elasticsearch failed", new IOException("down")));
+
+        assertThrows(SearchException.class, () -> documentService.findAllDocuments("rechnung"));
+
         verifyNoInteractions(documentRepository);
+    }
+
+    private Document documentWithId() {
+        Document document = new Document();
+        document.setId(UUID.randomUUID());
+        return document;
     }
 }
