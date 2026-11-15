@@ -20,7 +20,10 @@ export class DashboardComponent {
     private readonly router = inject(Router);
 
     // Suchbegriff steht in der URL (?q=...) und wird vom Router in den Input geschrieben; ohne Parameter kommt undefined
-    readonly q = input('', { transform: (value: string | undefined) => value ?? '' });
+    // bei mehrfachem ?q=a&q=b liefert der Router ein Array, dann zählt der letzte Wert
+    readonly q = input('', {
+        transform: (value: string | string[] | undefined) => (Array.isArray(value) ? value.at(-1) : value) ?? ''
+    });
 
     readonly documentsResource = rxResource({
         params: () => this.q(),

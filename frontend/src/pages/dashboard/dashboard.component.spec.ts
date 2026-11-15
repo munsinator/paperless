@@ -53,6 +53,13 @@ describe('DashboardComponent', () => {
         expect(titles.indexOf('Zeta')).toBeLessThan(titles.indexOf('Alpha'));
     });
 
+    it('uses the last value when the url repeats the search parameter', async () => {
+        const page = await openDashboard('/dashboard?q=a&q=zebra');
+
+        expect(getDocuments).toHaveBeenCalledWith('zebra');
+        expect((page.querySelector('input[name="query"]') as HTMLInputElement).value).toBe('zebra');
+    });
+
     it('prefills the search field from the url', async () => {
         const page = await openDashboard('/dashboard?q=hello');
 
