@@ -45,6 +45,36 @@ describe('DocumentService', () => {
         expect(result).toBe(pdf);
     });
 
+    it('sends the search term as query parameter', () => {
+        service.getDocuments('hello').subscribe();
+
+        const req = httpMock.expectOne(request => request.url === '/api/document');
+        expect(req.request.method).toBe('GET');
+        expect(req.request.params.get('query')).toBe('hello');
+        req.flush([]);
+    });
+
+    it('sends no query parameter without a search term', () => {
+        service.getDocuments().subscribe();
+
+        const req = httpMock.expectOne('/api/document');
+        expect(req.request.params.has('query')).toBe(false);
+        req.flush([]);
+    });
+
+    it('keeps the order of the search results from the backend', () => {
+        let titles: string[] = [];
+
+        service.getDocuments('hello').subscribe(documents => (titles = documents.map(document => document.title)));
+
+        // das Backend liefert die Treffer nach Relevanz, das Frontend darf nicht umsortieren
+        httpMock.expectOne(request => request.url === '/api/document').flush([
+            { id: '2', title: 'Zeta' },
+            { id: '1', title: 'Alpha' }
+        ]);
+        expect(titles).toEqual(['Zeta', 'Alpha']);
+    });
+
     it('omits the type when none is selected', () => {
         const file = new File(['%PDF-1.7'], 'x.pdf', { type: 'application/pdf' });
 

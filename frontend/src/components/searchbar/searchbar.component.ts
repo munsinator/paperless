@@ -1,4 +1,4 @@
-import { Component, output } from '@angular/core';
+import { Component, input, linkedSignal, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 
 @Component({
@@ -9,11 +9,13 @@ import { FormsModule } from '@angular/forms';
 })
 
 export class SearchbarComponent {
-    // kein signal sonst müsste parent (dashboard) schauen, ob sich der Wert geändert hat
     readonly search = output<string>();
-    query = '';
+    // aktuell aktiver Suchbegriff vom Parent (aus der URL)
+    readonly value = input('');
+    // Eingabe im Feld: startet mit value() und wird bei neuem value() zurückgesetzt, bleibt sonst frei beschreibbar
+    protected readonly query = linkedSignal(() => this.value());
 
     submitSearch(): void {
-        this.search.emit(this.query.trim());
+        this.search.emit(this.query().trim());
     }
 }

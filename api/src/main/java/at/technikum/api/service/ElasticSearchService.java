@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import java.io.IOException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 @Service
@@ -44,13 +45,23 @@ public class ElasticSearchService implements SearchService {
                             .fuzziness("AUTO"))), Void.class); // fehlertolerante Suche
 
             List<UUID> ids = response.hits().hits().stream()
-                    .map(hit -> hit.id())
-                    .map(id -> UUID.fromString(id))
+                    .map(hit -> toDocumentId(hit.id()))
+                    .flatMap(Optional::stream) // Optional::stream macht aus: - Optional.of(uuid1) einen Stream mit einer UUID. - Optional.empty() einen leeren Stream.
                     .toList();
             log.info("Search found {} documents", ids.size());
             return ids;
         } catch (IOException | ElasticsearchException exception) {
             throw new SearchException("Search in Elasticsearch failed", exception);
+        }
+    }
+
+    // Ein Eintrag mit ungültiger ID (z. B. von Hand angelegt) darf nicht die ganze Suche zum Absturz bringen
+    private Optional<UUID> toDocumentId(String id) {
+        try {
+            return Optional.of(UUID.fromString(id));
+        } catch (IllegalArgumentException exception) {
+            log.warn("Skipping search hit with invalid document id '{}'", id);
+            return Optional.empty();
         }
     }
 

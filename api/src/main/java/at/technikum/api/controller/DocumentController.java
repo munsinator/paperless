@@ -77,6 +77,9 @@ public class DocumentController {
         return ResponseEntity.ok(mapper.entityToDto(updatedEntity));
     }
 
+    // Validierung der Suchanfrage: @Size(max = 200) lehnt zu lange Begriffe mit 400 ab (das Suchfeld im Frontend hat dieselbe Grenze).
+    // Eine leere oder fehlende Query ist bewusst gültig und liefert alle Dokumente (Designentscheidung):
+    // so zeigt das Dashboard ohne Suchbegriff die komplette Liste und ein geleertes Suchfeld setzt die Ansicht zurück.
     @GetMapping
     public ResponseEntity<List<ResponseDocumentDTO>> findAll(@RequestParam(required = false) @Size(max = 200) String query) {
         log.debug("List documents request (search: {})", query != null && !query.isBlank());
