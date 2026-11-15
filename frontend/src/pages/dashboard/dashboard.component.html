@@ -9,7 +9,7 @@
             <div class="w-6 h-6 border-2 border-slate-200 border-t-slate-800 rounded-full animate-spin"></div>
         </div>
         } @else if (documentsResource.error()) {
-        <p class="text-red-600 text-center text-sm">Dokumente konnten nicht geladen werden.</p>
+        <p class="text-red-600 text-center text-sm">{{ errorMessage() }}</p>
         } @else {
         @for (doc of allDocuments(); track doc.id) {
         <app-document-card [document]="doc" (delete)="onDeleteDocument($event)" (update)="onUpdateDocument($event)"

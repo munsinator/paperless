@@ -1,9 +1,10 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
-export type ErrorAction = 'load' | 'save' | 'delete' | 'upload' | 'download';
+export type ErrorAction = 'load' | 'search' | 'save' | 'delete' | 'upload' | 'download';
 
 const ACTION_LABEL: Record<ErrorAction, string> = {
     load: 'Das Laden',
+    search: 'Die Suche',
     save: 'Das Speichern',
     delete: 'Das Löschen',
     upload: 'Der Upload',
@@ -36,6 +37,8 @@ export function toErrorMessage(error: unknown, action: ErrorAction): string {
             return 'Der Server unterstützt dieses Dateiformat nicht.';
         case 413:
             return 'Die Datei ist für den Server zu groß.';
+        case 503: // Backend meldet so, dass ein angebundener Dienst (Suche, Dateispeicher) nicht erreichbar ist
+            return `${label} ist derzeit nicht verfügbar. Bitte versuche es später erneut.`;
         default:
             return error.status >= 500
                 ? `${label} ist wegen eines Serverfehlers fehlgeschlagen.`

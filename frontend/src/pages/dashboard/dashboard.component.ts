@@ -6,6 +6,7 @@ import { DocumentCardComponent } from '../../components/document-card/document-c
 import { DocumentService } from '../../services/document.service';
 import { NotificationService } from '../../services/notification.service';
 import { DocumentUpdateEvent } from '../../components/document-card/document-card.component';
+import { toErrorMessage } from '../../utils/http-error';
 
 @Component({
     selector: 'app-dashboard',
@@ -27,6 +28,10 @@ export class DashboardComponent {
     });
 
     readonly allDocuments = computed(() => this.documentsResource.value() ?? []);
+
+    // passende Meldung ("Die Suche ist derzeit nicht verfügbar")
+    readonly errorMessage = computed(() =>
+        toErrorMessage(this.documentsResource.error(), this.q() ? 'search' : 'load'));
 
     onSearch(query: string): void {
         // leerer Begriff entfernt ?q= aus der URL; merge: andere Query-Parameter bleiben erhalten
