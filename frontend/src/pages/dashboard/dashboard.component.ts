@@ -15,7 +15,7 @@ import { DocumentUpdateEvent } from '../../components/document-card/document-car
 export class DashboardComponent {
     private readonly documentService = inject(DocumentService);
     private readonly notifications = inject(NotificationService);
-    private readonly searchQuery = signal('');
+    protected readonly searchQuery = signal(''); // protected: das Template unterscheidet "keine Treffer" von "keine Dokumente"
 
     readonly documentsResource = rxResource({
         params: () => this.searchQuery(),

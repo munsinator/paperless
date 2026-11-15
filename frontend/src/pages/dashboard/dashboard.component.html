@@ -15,7 +15,11 @@
         <app-document-card [document]="doc" (delete)="onDeleteDocument($event)" (update)="onUpdateDocument($event)"
             class="w-full block" />
         } @empty {
+        @if (searchQuery()) {
+        <p class="text-slate-500 text-center">Keine Treffer für „{{ searchQuery() }}“.</p>
+        } @else {
         <p class="text-slate-500 text-center">Keine Dokumente vorhanden.</p>
+        }
         }
         }
     </div>
