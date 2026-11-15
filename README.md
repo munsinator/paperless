@@ -125,6 +125,17 @@ If the index was lost or Elasticsearch calls failed earlier, set `SEARCH_REINDEX
 | Silo web console (login: `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`) | http://localhost:9001 |
 | Elasticsearch REST API | http://localhost:9200 |
 
+### 4. Try it: upload a PDF and search its content
+
+The repository contains `hello-world.pdf` (text: "Hello World") for a quick end-to-end check of upload → Silo → RabbitMQ → OCR → Elasticsearch → search.
+
+1. Open http://localhost, register a user and log in.
+2. Upload `hello-world.pdf` with a title that does **not** contain "Hello", e.g. `Test document`.
+3. Wait a few seconds for the OCR worker (`docker compose logs -f ocr-worker` shows `OCR completed for documentId=...`).
+4. Search for `Hello` (or the typo `helo`, the search is fuzzy): the document appears, found by its OCR text and not by its title.
+
+Optional check of the index: `curl http://localhost:9200/documents/_search?q=text:hello`
+
 
 ### How to stop the application
 
