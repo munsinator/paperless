@@ -133,6 +133,24 @@ class DocumentServiceImplTest {
     }
 
     @Test
+    void update_does_not_touch_search_index_when_title_is_unchanged() {
+        UUID id = UUID.randomUUID();
+        Document current = new Document();
+        current.setId(id);
+        current.setTitle("Rechnung");
+        Document update = new Document();
+        update.setTitle("Rechnung");
+        update.setTags(List.of("Neu"));
+        when(documentRepository.findById(id)).thenReturn(Optional.of(current));
+        when(documentRepository.save(any(Document.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        documentService.update(id, update, null);
+
+        verify(documentRepository).save(current);
+        verifyNoInteractions(eventPublisher);
+    }
+
+    @Test
     void save_with_file_saves_metadata_and_stores_pdf_for_valid_pdf() {
         Document document = new Document();
         document.setId(UUID.randomUUID());

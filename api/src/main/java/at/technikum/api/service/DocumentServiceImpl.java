@@ -82,12 +82,15 @@ public class DocumentServiceImpl implements DocumentService {
         log.debug("Updating Document: {}", documentId);
 
         Document document = findDocumentById(documentId);
+        boolean titleChanged = !Objects.equals(document.getTitle(), updatedDocument.getTitle());
         document.setTitle(updatedDocument.getTitle());
         document.setTags(updatedDocument.getTags() == null ? List.of() : updatedDocument.getTags());
         document.setType(resolveType(requestedType));
 
         Document recentlyUpdatedDocument =  documentRepository.save(document);
-        eventPublisher.publishEvent(new DocumentTitleChangedEvent(recentlyUpdatedDocument.getId(), recentlyUpdatedDocument.getTitle()));
+        if (titleChanged) { // Tags oder Typ stehen nicht im Index; ein früher fehlgeschlagener Eintrag wird über den Reindex nachgeholt
+            eventPublisher.publishEvent(new DocumentTitleChangedEvent(recentlyUpdatedDocument.getId(), recentlyUpdatedDocument.getTitle()));
+        }
         //TODO: Ask if it's intended to publish an event also when updating a document
         /*
         eventPublisher.publishEvent(
