@@ -13,7 +13,7 @@ public class RabbitConfig {
 
     @Bean
     public org.springframework.boot.ApplicationRunner initializeRabbitTopology(
-            org.springframework.amqp.rabbit.core.RabbitAdmin rabbitAdmin) {
+            org.springframework.amqp.core.AmqpAdmin rabbitAdmin) {
         return args -> rabbitAdmin.initialize();
     }
 
