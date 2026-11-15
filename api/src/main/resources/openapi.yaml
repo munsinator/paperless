@@ -47,6 +47,14 @@ paths:
       tags:
         - document-controller
       operationId: findAll
+      parameters:
+        - name: query
+          in: query
+          required: false
+          description: Full-text and fuzzy search; without it all documents are returned
+          schema:
+            type: string
+            maxLength: 200
       responses:
         "200":
           description: OK
@@ -119,20 +127,19 @@ paths:
             format: uuid
       responses:
         "200":
-          description: OK
-    delete:
-      tags:
-        - document-controller
-      parameters:
-        - name: documentId
-          in: path
-          required: true
-          schema:
-            type: string
-            format: uuid
-      responses:
-        "204":
-          description: Resource deletion successfull
+          description: The stored PDF, named after the stored document title
+          headers:
+            Content-Disposition:
+              description: attachment with the filename "<title>.pdf"
+              schema:
+                type: string
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: Document or stored file not found
 components:
   schemas:
     AuthDTO:

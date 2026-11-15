@@ -8,6 +8,7 @@ import lombok.Data;
 public class AuthDTO {
 
     @NotBlank(message = "Username cannot be empty")
+    @jakarta.validation.constraints.Pattern(regexp = "(?U)\\S+", message = "Username must not contain whitespace")
     @Size(min = 3, max = 20, message = "Username must be between 3 and 20 characters long")
     private String username;
 

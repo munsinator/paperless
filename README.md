@@ -13,14 +13,46 @@ The current implementation supports user registration and login, document metada
 | Database | PostgreSQL 16, Spring Data JPA |
 | Message broker | RabbitMQ |
 | OCR worker | Java 25, Spring Boot AMQP |
-| Object storage (planned) | MinIO  |
-| Search engine (planned) | Elasticsearch (planned) |
+| Object storage | Silo (`pgsty/silo`, MinIO-compatible fork), MinIO Java client |
+| Search engine | Elasticsearch 9.4, `elasticsearch-java` client |
 | GenAI worker / provider (planned) | Gemini integration |
 
 
-## Architecture!
+## Architecture
+
+### Document processing flow
+
+```
+Upload ─► REST: save metadata in PostgreSQL ─► store PDF in Silo ─► index title in Elasticsearch
+            └─► after commit: DocumentSavedEvent ─► exchange document.events
+                  └─► OCR worker: load PDF from Silo, run Tesseract
+                        └─► DocumentOcrCompletedEvent ─► exchange ocr.events
+                              └─► REST result listener: add OCR text to the Elasticsearch entry
+Search ─► REST ─► Elasticsearch (ranked document IDs) ─► load documents from PostgreSQL
+```
+
+PostgreSQL is the source of truth; Elasticsearch is only the search view. The REST service owns the `title` in the index (upload, rename, delete); its OCR-result listener adds `text`.
+
+Search index behavior of the REST service:
+- On startup it creates the index `documents` with an explicit mapping (`title`: text + keyword sub-field, `text`: text, `dynamic: strict`) if it does not exist yet.
+- Title changes (upload, rename) and deletions are written to Elasticsearch only **after** the database transaction has committed, so a rollback never leaves an orphaned entry. A failing Elasticsearch call is logged and does not block the database change.
+- Renaming writes the title only when it actually changed.
+
+### Shared names
+
+All services use these names and the same `.env` variables:
+
+| What | Name |
+| --- | --- |
+| Storage bucket / object key | `documents` / document ID (never the file name) |
+| Storage variables | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` |
+| Upload event | exchange `document.events` (fanout) → queue `ocr.document.events`, payload `{ documentId, documentName }` |
+| OCR result event | exchange `ocr.events` (fanout) → queue `api.ocr.events`, payload `{ documentId, documentName, content }` |
+| Search index | `documents`, fields `title` and `text`, Elasticsearch `_id` = document ID |
 
 ### REST interface
+
+The API declares `document.events` at startup via `RabbitAdmin.initialize()`. It also provisions the durable OCR job queue and binding so jobs can wait while the worker is offline. The worker does not declare this exchange. Docker Compose starts the worker after the API is ready; `/health` returns 503 until application startup has completed.
 
 All paths below use the host prefix `http://localhost/api`. Document endpoints require `Authorization: Bearer <token>`.
 
@@ -29,11 +61,20 @@ All paths below use the host prefix `http://localhost/api`. Document endpoints r
 | POST | `/users` | Register with `username` and `password` |
 | POST | `/sessions` | Log in and receive a JWT |
 | POST | `/document` | Create metadata and trigger a document-saved event |
+| POST | `/document` (multipart) | Upload a PDF (`file`, `title`, `type`, `tags`): saves metadata, then stores the PDF in Silo, then triggers the event |
 | GET | `/document` | List documents; optional `?query=...` searches title and OCR text |
 | GET | `/document/{id}` | Read document metadata |
 | PUT | `/document/{id}` | Replace editable metadata |
-| DELETE | `/document/{id}` | Delete document metadata |
-| GET / DELETE | `/document/{id}/data` | File operations; currently return 501 |
+| DELETE | `/document/{id}` | Delete the document and its stored PDF |
+| GET | `/document/{id}/data` | Download the stored PDF (`404` if the document or its file does not exist) |
+
+If the storage is unavailable, the upload fails with `503` and nothing is persisted (the database transaction is rolled back). Uploads are limited to 15 MB.
+
+Both document creation endpoints return `201 Created` with a `Location` header. Listing documents returns `200` with results, or `204 No Content` when there are none (including searches without matches).
+
+The API validates JSON and multipart document requests: titles must be nonblank and at most 200 characters; at most 20 tags are allowed, each nonblank, without whitespace, and at most 50 characters. Duplicate tags are rejected case-insensitively. Usernames must be 3–20 characters without whitespace; passwords must be at least 8 characters and nonblank. Validation failures return `400`. Handled client errors are logged at WARN; storage and search failures at ERROR.
+
+Creation dates are stored as `LocalDate` and displayed as `dd.MM.yyyy`, without a time of day.
 
 Example document request body:
 
@@ -47,24 +88,18 @@ Example document request body:
 
 Supported document types are `RECEIPT`, `CONTRACT`, `BANK_STATEMENT`, `CERTIFICATE`, `NOTE`, `PASSPORT`, and `OTHER`.
 
-## How to run:
-Note: Host ports `80`, `5432`, `5672`, and `15672` must be available!
+## How to run
+Note: Host ports `80`, `5432`, `5672`, `15672`, `9000`, `9001`, and `9200` must be available!
 
 ### 1. Configure the environment
 
-Create a `.env` file beside `docker-compose.yml` with these local demonstration values:
+Copy the template and replace every `REPLACE_ME` value:
 
-```dotenv
-SPRING_DATASOURCE_USERNAME=paperless
-SPRING_DATASOURCE_PASSWORD=paperless_password
-RABBIT_USER=paperless
-RABBIT_PASSWORD=paperless_local_demo
-RABBIT_VHOST=paperless
-JWT_SECRET=REPLACE_WITH_BASE64_KEY
+```powershell
+Copy-Item .env.example .env
 ```
 
-The database credentials above must match the PostgreSQL service configuration. 
-Generate a random JWT signing key, then replace the placeholder.
+The `.env` file is git-ignored. The database credentials must match the PostgreSQL service configuration.
 
 ### 2. Build and start all services
 
@@ -76,6 +111,10 @@ docker compose up --build
 
 To run in the background, use `docker compose up -d --build`. View logs with `docker compose logs -f paperless-rest ocr-worker`.
 
+### Rebuild the search index (optional)
+
+If the index was lost or Elasticsearch calls failed earlier, set `SEARCH_REINDEX_ON_STARTUP=true` in `.env` and restart the REST service (`docker compose up -d paperless-rest`). On startup all titles are rewritten from PostgreSQL; the OCR `text` stays untouched (it lives only in Elasticsearch). Set it back to `false` afterwards. Orphaned index entries are not removed; the search ignores IDs that no longer exist in PostgreSQL.
+
 ### 3. Open and use the application
 
 | Service | Address |
@@ -83,6 +122,8 @@ To run in the background, use `docker compose up -d --build`. View logs with `do
 | Web application | http://localhost |
 | REST API through nginx | http://localhost/api |
 | RabbitMQ management UI | http://localhost:15672 |
+| Silo web console (login: `MINIO_ACCESS_KEY` / `MINIO_SECRET_KEY`) | http://localhost:9001 |
+| Elasticsearch REST API | http://localhost:9200 |
 
 
 ### How to stop the application
@@ -97,16 +138,25 @@ docker compose down
 | Level | Tools | Coverage |
 | --- | --- | --- |
 | Service unit tests | JUnit, Mockito | Metadata defaults and type creation, event publication on save, no publication when repository save fails, and update behavior. |
-| Controller tests | Spring MVC test slices, MockMvc, Mockito | Registration/login happy paths, document listing/search delegation, metadata mapping, creation/update, blank-title validation, and missing-document responses. |
-| Frontend tests | Angular TestBed, Vitest | Duplicate-tag validation and generated application tests. |
+| Search and storage tests | JUnit, Mockito | Elasticsearch service (search, title save, delete) with a mocked client, index initializer and reindex runner, after-commit index sync listener, storage service retry and bucket initializer. |
+| Controller tests | Spring MVC test slices, MockMvc, Mockito | Registration/login happy paths, document listing/search delegation, metadata mapping, creation/update, username/title/tag validation, creation Location headers, empty-list 204 responses, and missing-document responses. |
+| Frontend tests | Angular TestBed, Vitest | Tag validation, document HTTP requests including 204 handling, authentication, notifications, and document details. |
 
 Next planned tests are Integration Tests for RabbitMQ!
 
-Run the worker tests from `ocr-worker/` or `api/` with RabbitMQ available:
+Run the API tests from the project root (Java 25 required):
 
 ```powershell
-.\mvnw.cmd test
+.\api\mvnw.cmd -f api/pom.xml test
 ```
+
+Run the OCR worker tests from the project root using the same wrapper:
+
+```powershell
+.\api\mvnw.cmd -f ocr-worker/pom.xml test
+```
+
+Application-context tests may require environment variables and running infrastructure. RabbitMQ startup unit tests cover explicit initialization, failure propagation, and API readiness; a fresh-broker end-to-end test is still outstanding.
 
 For frontend development/testing, install Node.js 24 and run from `frontend/`:
 

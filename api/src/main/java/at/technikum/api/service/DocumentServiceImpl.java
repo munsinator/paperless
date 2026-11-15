@@ -16,10 +16,15 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +34,8 @@ public class DocumentServiceImpl implements DocumentService {
     private final DocumentRepository documentRepository;
     private final DocumentTypeRepository documentTypeRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final StorageService storageService;
+    private final SearchService searchService;
     // TODO check if mapping has to happen in controller or service
     // private final DocumentMapper mapper;
 
@@ -45,9 +52,10 @@ public class DocumentServiceImpl implements DocumentService {
         Document savedDocument = documentRepository.save(document);
 
         log.info("Saved Document: {}", savedDocument.getId());
+        eventPublisher.publishEvent(new DocumentTitleChangedEvent(savedDocument.getId(), savedDocument.getTitle()));
 
         eventPublisher.publishEvent(new DocumentSavedEvent(
-                savedDocument.getId().toString()));
+                savedDocument.getId().toString(), savedDocument.getTitle()));
         return savedDocument;
     }
 
@@ -55,7 +63,17 @@ public class DocumentServiceImpl implements DocumentService {
     @Transactional
     public Document saveWithFile(Document document, DocumentTypeEnum requestedType, MultipartFile file) {
         validatePdf(file);
-        return save(document, requestedType);
+        Document savedDocument = save(document, requestedType);
+        storageService.store(savedDocument.getId(), readBytes(file));
+        return savedDocument;
+    }
+
+    @Override
+    public InputStream loadFile(UUID documentId) {
+        if (!documentRepository.existsById(documentId)) {
+            throw new DocumentNotFoundException(documentId);
+        }
+        return storageService.load(documentId);
     }
 
     @Override
@@ -64,11 +82,15 @@ public class DocumentServiceImpl implements DocumentService {
         log.debug("Updating Document: {}", documentId);
 
         Document document = findDocumentById(documentId);
+        boolean titleChanged = !Objects.equals(document.getTitle(), updatedDocument.getTitle());
         document.setTitle(updatedDocument.getTitle());
         document.setTags(updatedDocument.getTags() == null ? List.of() : updatedDocument.getTags());
         document.setType(resolveType(requestedType));
 
         Document recentlyUpdatedDocument =  documentRepository.save(document);
+        if (titleChanged) { // Tags oder Typ stehen nicht im Index; ein früher fehlgeschlagener Eintrag wird über den Reindex nachgeholt
+            eventPublisher.publishEvent(new DocumentTitleChangedEvent(recentlyUpdatedDocument.getId(), recentlyUpdatedDocument.getTitle()));
+        }
         //TODO: Ask if it's intended to publish an event also when updating a document
         /*
         eventPublisher.publishEvent(
@@ -89,6 +111,8 @@ public class DocumentServiceImpl implements DocumentService {
             throw new DocumentNotFoundException(documentId);
         }
         documentRepository.deleteById(documentId);
+        storageService.delete(documentId);
+        eventPublisher.publishEvent(new DocumentDeletedEvent(documentId));
         log.info("Deleted Document: {}", documentId);
     }
 
@@ -98,7 +122,14 @@ public class DocumentServiceImpl implements DocumentService {
         if (query == null || query.isBlank()) {
             return documentRepository.findAll();
         }
-        return documentRepository.findByTitleContainingIgnoreCaseOrOcrTextContainingIgnoreCase(query, query);
+        // ES liefert die IDs nach Relevanz, die Daten kommen aus Postgres
+        List<UUID> rankedIds = searchService.search(query.trim());
+        Map<UUID, Document> documentsById = documentRepository.findAllById(rankedIds).stream()
+                .collect(Collectors.toMap(Document::getId, document -> document));
+        return rankedIds.stream() // Reihenfolge von ES wiederhergestellt
+                .map(documentsById::get) // für jede ID das passende Dokument aus documentsById
+                .filter(Objects::nonNull) // im Index, aber nicht mehr in Postgres
+                .toList();
     }
 
     @Override
@@ -114,6 +145,14 @@ public class DocumentServiceImpl implements DocumentService {
         }
         return documentTypeRepository.findById(requestedType)
                 .orElseGet(() -> documentTypeRepository.save(new DocumentType(requestedType)));
+    }
+
+    private byte[] readBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException exception) {
+            throw new InvalidFileException("The uploaded file could not be read");
+        }
     }
 
     private void validatePdf(MultipartFile file) {
