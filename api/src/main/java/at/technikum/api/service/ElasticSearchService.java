@@ -70,6 +70,20 @@ public class ElasticSearchService implements SearchService {
     }
 
     @Override
+    public void saveText(UUID documentId, String text) {
+        try {
+            client.update(update -> update
+                    .index(INDEX)
+                    .id(documentId.toString())
+                    .doc(Map.of(TEXT_FIELD, text))
+                    .docAsUpsert(true), Void.class);
+            log.info("Saved OCR text of document {} in search index", documentId);
+        } catch (IOException | ElasticsearchException exception) {
+            throw new SearchException("Saving OCR text in Elasticsearch failed", exception);
+        }
+    }
+
+    @Override
     public void delete(UUID documentId) {
         log.debug("Deleting document {} from index '{}'", documentId, INDEX);
         try {

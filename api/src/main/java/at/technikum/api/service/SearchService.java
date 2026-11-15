@@ -9,5 +9,7 @@ public interface SearchService {
 
     void saveTitle(UUID documentId, String title);
 
+    void saveText(UUID documentId, String text);
+
     void delete(UUID documentId);
 }

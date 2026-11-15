@@ -49,11 +49,11 @@ services:
     volumes:
       - es_data:/usr/share/elasticsearch/data
     healthcheck:
-      test: ["CMD-SHELL", "curl -fs 'http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s'"]
+      test: ["CMD", "curl", "-fsS", "--max-time", "8", "http://localhost:9200/_cluster/health?wait_for_status=yellow&timeout=5s"]
       interval: 10s
       timeout: 10s
       retries: 12
-      start_period: 30s
+      start_period: 180s
 
   paperless-web-ui:
     build: ./frontend
@@ -103,15 +103,19 @@ services:
   ocr-worker:
     build: ./ocr-worker
     container_name: paperless-ocr
-    volumes:
-      - document_data:/data/documents:ro
     environment:
       SPRING_RABBITMQ_HOST: paperless-mq
       RABBIT_USER: ${RABBIT_USER}
       RABBIT_PASSWORD: ${RABBIT_PASSWORD}
       RABBIT_VHOST: ${RABBIT_VHOST}
+      MINIO_ENDPOINT: http://paperless-storage:9000
+      MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY}
+      MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
+      MINIO_BUCKET: ${MINIO_BUCKET:-documents}
     depends_on:
       paperless-mq:
+        condition: service_healthy
+      paperless-storage:
         condition: service_healthy
 
   postgres:

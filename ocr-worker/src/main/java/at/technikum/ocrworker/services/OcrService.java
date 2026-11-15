@@ -7,11 +7,11 @@ import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
 import org.apache.pdfbox.Loader;
 import org.apache.pdfbox.rendering.PDFRenderer;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import java.io.File;
 import java.io.IOException;
-import java.nio.file.Path;
+import java.nio.file.Files;
+import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 @Slf4j
@@ -19,8 +19,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class OcrService {
     private final DocumentOcrCompletedPublisher publisher;
-    @Value("${documents.storage-path:/data/documents}")
-    private String storagePath;
+    private final MinioStorageService storageService;
 
     public static String extractText(File file) throws IOException {
         Tesseract tesseract = new Tesseract();
@@ -42,9 +41,18 @@ public class OcrService {
     }
 
     public void processDocument(DocumentSavedEvent event) throws IOException {
-        UUID id = UUID.fromString(event.getDocumentId());
-        String text = extractText(Path.of(storagePath, id + ".pdf").toFile());
-        publisher.publish(new DocumentOcrCompletedEvent(id.toString(), event.getDocumentName(), text));
+        UUID id = UUID.fromString(event.documentId());
+        String text;
+        var temporaryFile = Files.createTempFile("ocr-" + id + "-", ".pdf");
+        try {
+            try (var input = storageService.load(id)) {
+                Files.copy(input, temporaryFile, StandardCopyOption.REPLACE_EXISTING);
+            }
+            text = extractText(temporaryFile.toFile());
+        } finally {
+            Files.deleteIfExists(temporaryFile);
+        }
+        publisher.publish(new DocumentOcrCompletedEvent(id.toString(), event.documentName(), text));
         log.info("OCR completed for documentId={}", id);
     }
 }
