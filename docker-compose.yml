@@ -113,6 +113,8 @@ services:
       MINIO_SECRET_KEY: ${MINIO_SECRET_KEY}
       MINIO_BUCKET: ${MINIO_BUCKET:-documents}
     depends_on:
+      paperless-rest:
+        condition: service_healthy
       paperless-mq:
         condition: service_healthy
       paperless-storage:

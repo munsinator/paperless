@@ -22,7 +22,8 @@ public class DocumentSavedListener extends EventListener<DocumentSavedEvent>{
                     value = @Queue("ocr.document.events"),
                     exchange = @Exchange(
                             value = "document.events",
-                            type = ExchangeTypes.FANOUT
+                            type = ExchangeTypes.FANOUT,
+                            declare = "false"
                     )
     ))
 

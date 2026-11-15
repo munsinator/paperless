@@ -25,6 +25,14 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @Import({SecurityConfig.class, JwtAuthFilter.class})
 class AuthControllerTest {
 
+    @Test
+    void rejects_username_with_whitespace() throws Exception {
+        mockMvc.perform(post("/users").contentType("application/json")
+                        .content("{\"username\":\"a    b\",\"password\":\"secure-password\"}"))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(userService);
+    }
+
     @Autowired
     private MockMvc mockMvc;
 

@@ -34,6 +34,38 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WithMockUser
 class DocumentControllerTests {
 
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {
+            "{\"title\":\"valid\",\"tags\":[\"  \"]}",
+            "{\"title\":\"valid\",\"tags\":[\"x y\"]}",
+            "{\"title\":\"valid\",\"tags\":[\"tag\",\"TAG\"]}"
+    })
+    void rejects_invalid_tags_on_create_and_update(String body) throws Exception {
+        mockMvc.perform(post("/document").contentType("application/json").content(body))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(put("/document/{id}", UUID.randomUUID())
+                        .contentType("application/json").content(body))
+                .andExpect(status().isBadRequest());
+        verifyNoInteractions(documentService);
+    }
+
+    @Test
+    void rejects_oversized_values_in_json_and_multipart() throws Exception {
+        for (String field : List.of("title", "tags")) {
+            String body = field.equals("title")
+                    ? "{\"title\":\"" + "x".repeat(201) + "\"}"
+                    : "{\"title\":\"valid\",\"tags\":[\"" + "x".repeat(51) + "\"]}";
+            mockMvc.perform(post("/document").contentType("application/json").content(body))
+                    .andExpect(status().isBadRequest());
+            mockMvc.perform(multipart("/document")
+                            .file(new MockMultipartFile("file", "test.pdf", "application/pdf", "%PDF-1.7".getBytes()))
+                            .param("title", field.equals("title") ? "x".repeat(300) : "valid")
+                            .param("tags", field.equals("tags") ? "x".repeat(300) : "valid"))
+                    .andExpect(status().isBadRequest());
+        }
+        verifyNoInteractions(documentService);
+    }
+
     @Autowired
     private MockMvc mockMvc;
 
@@ -51,8 +83,8 @@ class DocumentControllerTests {
         when(documentService.findAllDocuments(null)).thenReturn(List.of());
 
         mockMvc.perform(get("/document"))
-                .andExpect(status().isOk())
-                .andExpect(content().json("[]"));
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
     }
 
     @Test
@@ -60,8 +92,8 @@ class DocumentControllerTests {
         when(documentService.findAllDocuments("invoice")).thenReturn(List.of());
 
         mockMvc.perform(get("/document").param("query", "invoice"))
-                .andExpect(status().isOk())
-                .andExpect(content().json("[]"));
+                .andExpect(status().isNoContent())
+                .andExpect(content().string(""));
 
         verify(documentService).findAllDocuments("invoice");
     }
@@ -133,6 +165,7 @@ class DocumentControllerTests {
                                 {"title":"Semesterrechnung","type":"RECEIPT","tags":["Studium","Rechnung"]}
                                 """))
                 .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "http://localhost/document/" + savedDocument.getId()))
                 .andExpect(jsonPath("$.id").value(savedDocument.getId().toString()))
                 .andExpect(jsonPath("$.title").value("Semesterrechnung"))
                 .andExpect(jsonPath("$.createdAt").value(LocalDate.now().toString()))
@@ -165,6 +198,7 @@ class DocumentControllerTests {
                         .param("type", "RECEIPT")
                         .param("tags", "Studium", "Rechnung"))
                 .andExpect(status().isCreated())
+                .andExpect(header().string("Location", "http://localhost/document/" + savedDocument.getId()))
                 .andExpect(jsonPath("$.title").value("Semesterrechnung"))
                 .andExpect(jsonPath("$.tags[1]").value("Rechnung"));
 
