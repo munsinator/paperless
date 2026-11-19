@@ -139,6 +139,15 @@ public class DocumentServiceImpl implements DocumentService {
                 .orElseThrow(() -> new DocumentNotFoundException(documentId));
     }
 
+    @Override
+    @Transactional
+    public void updateSummary(UUID documentId, String summary) {
+        Document document = findDocumentById(documentId);
+        document.setSummary(summary);
+        documentRepository.save(document);
+        log.info("Saved summary for document: {}", documentId);
+    }
+
     private DocumentType resolveType(DocumentTypeEnum requestedType) {
         if (requestedType == null) {
             return null;

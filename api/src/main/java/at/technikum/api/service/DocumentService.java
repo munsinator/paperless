@@ -27,4 +27,7 @@ public interface DocumentService {
     List<Document> findAllDocuments(String query);
 
     Document findDocumentById(UUID documentId);
+
+    // speichert die generierte Zusammenfassung; wirft DocumentNotFoundException, wenn das Dokument nicht mehr existiert
+    void updateSummary(UUID documentId, String summary);
 }
