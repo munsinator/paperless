@@ -1,7 +1,7 @@
 package at.technikum.api.messaging;
 
-import at.technikum.api.exceptions.DocumentNotFoundException;
-import at.technikum.api.service.DocumentService;
+import at.technikum.api.repository.DocumentRepository;
+import at.technikum.api.service.SearchService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -14,7 +14,8 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class DocumentSummarizedListener {
 
-    private final DocumentService documentService;
+    private final DocumentRepository repository;
+    private final SearchService searchService;
 
     @RabbitListener(queues = "api.genai.events")
     // DocumentSummarizedEvent enthält summary und documentId
@@ -28,11 +29,12 @@ public class DocumentSummarizedListener {
         if (documentId == null) {
             return;
         }
-        try {
-            documentService.updateSummary(documentId, event.getSummary());
-        } catch (DocumentNotFoundException exception) {
+        // sonst Inkonsistenz
+        if (!repository.existsById(documentId)) {
             log.warn("Ignoring summary for deleted documentId={}", documentId);
+            return;
         }
+        searchService.saveSummary(documentId, event.getSummary());
     }
 
     private UUID parseDocumentId(String rawId) {

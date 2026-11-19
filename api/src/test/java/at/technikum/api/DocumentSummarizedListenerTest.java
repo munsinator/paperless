@@ -1,9 +1,9 @@
 package at.technikum.api;
 
-import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.messaging.DocumentSummarizedEvent;
 import at.technikum.api.messaging.DocumentSummarizedListener;
-import at.technikum.api.service.DocumentService;
+import at.technikum.api.repository.DocumentRepository;
+import at.technikum.api.service.SearchService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.NullAndEmptySource;
@@ -11,16 +11,16 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.UUID;
 
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
-import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
+import static org.mockito.Mockito.when;
 
 class DocumentSummarizedListenerTest {
 
-    private final DocumentService documentService = mock(DocumentService.class);
-    private final DocumentSummarizedListener listener = new DocumentSummarizedListener(documentService);
+    private final DocumentRepository repository = mock(DocumentRepository.class);
+    private final SearchService searchService = mock(SearchService.class);
+    private final DocumentSummarizedListener listener = new DocumentSummarizedListener(repository, searchService);
     private final UUID id = UUID.randomUUID();
 
     private DocumentSummarizedEvent event(String documentId, String summary) {
@@ -31,10 +31,12 @@ class DocumentSummarizedListenerTest {
     }
 
     @Test
-    void saves_summary_for_valid_event() {
+    void saves_summary_in_search_index_for_valid_event() {
+        when(repository.existsById(id)).thenReturn(true);
+
         listener.consume(event(id.toString(), "Kurze Zusammenfassung"));
 
-        verify(documentService).updateSummary(id, "Kurze Zusammenfassung");
+        verify(searchService).saveSummary(id, "Kurze Zusammenfassung");
     }
 
     @ParameterizedTest // mit mehreren Parametern selben Test aufrufen
@@ -43,7 +45,7 @@ class DocumentSummarizedListenerTest {
     void ignores_event_without_summary(String summary) {
         listener.consume(event(id.toString(), summary));
 
-        verifyNoInteractions(documentService);
+        verifyNoInteractions(repository, searchService);
     }
 
     @ParameterizedTest
@@ -52,14 +54,16 @@ class DocumentSummarizedListenerTest {
     void ignores_event_with_invalid_document_id(String documentId) {
         listener.consume(event(documentId, "Zusammenfassung"));
 
-        verifyNoInteractions(documentService);
+        verifyNoInteractions(repository, searchService);
     }
 
-    // Falls z.B. ein Dokument gelöscht wurde, bevor die Zusammenfassung gespeichert werden konnte, darf kein Fehler geworfen werden.
+    // Falls z.B. ein Dokument gelöscht wurde, bevor die Zusammenfassung gespeichert werden konnte, darf nichts im Index landen.
     @Test
-    void ignores_summary_for_deleted_document_without_throwing() {
-        doThrow(new DocumentNotFoundException(id)).when(documentService).updateSummary(id, "Zusammenfassung");
+    void ignores_summary_for_deleted_document() {
+        when(repository.existsById(id)).thenReturn(false);
 
-        assertDoesNotThrow(() -> listener.consume(event(id.toString(), "Zusammenfassung")));
+        listener.consume(event(id.toString(), "Zusammenfassung"));
+
+        verifyNoInteractions(searchService);
     }
 }
