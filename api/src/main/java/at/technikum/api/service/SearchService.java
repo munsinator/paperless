@@ -11,5 +11,7 @@ public interface SearchService {
 
     void saveText(UUID documentId, String text);
 
+    void saveSummary(UUID documentId, String summary);
+
     void delete(UUID documentId);
 }

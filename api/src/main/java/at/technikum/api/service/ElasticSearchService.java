@@ -26,6 +26,7 @@ public class ElasticSearchService implements SearchService {
     // Aufbau eines Eintrags im Index: _id = documentId, Felder = title (schreibt die API) und text (schreibt der Indexing-Worker)
     static final String TITLE_FIELD = "title";
     static final String TEXT_FIELD = "text";
+    static final String SUMMARY_FIELD = "summary"; // wird nur gespeichert und gelesen, nicht durchsucht
     private static final int TITLE_BOOST = 3; // Treffer im Titel zählen dreimal so viel wie Treffer im Text
 
     private final ElasticsearchClient client;
@@ -91,6 +92,20 @@ public class ElasticSearchService implements SearchService {
             log.info("Saved OCR text of document {} in search index", documentId);
         } catch (IOException | ElasticsearchException exception) {
             throw new SearchException("Saving OCR text in Elasticsearch failed", exception);
+        }
+    }
+
+    @Override
+    public void saveSummary(UUID documentId, String summary) {
+        try {
+            client.update(update -> update
+                    .index(INDEX)
+                    .id(documentId.toString())
+                    .doc(Map.of(SUMMARY_FIELD, summary))
+                    .docAsUpsert(true), Void.class);
+            log.info("Saved summary of document {} in search index", documentId);
+        } catch (IOException | ElasticsearchException exception) {
+            throw new SearchException("Saving summary in Elasticsearch failed", exception);
         }
     }
 
