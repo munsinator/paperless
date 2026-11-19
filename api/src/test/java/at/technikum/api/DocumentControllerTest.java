@@ -7,6 +7,7 @@ import at.technikum.api.entity.DocumentTypeEnum;
 import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.exceptions.SearchException;
+import at.technikum.api.exceptions.SummaryUnavailableException;
 import at.technikum.api.mapper.DocumentMapperImpl;
 import at.technikum.api.service.JwtService;
 import at.technikum.api.service.UserService;
@@ -21,7 +22,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.time.LocalDate;
 
@@ -311,6 +314,47 @@ class DocumentControllerTests {
                 .andExpect(status().isNotFound());
 
         verify(documentService, never()).loadFile(any());
+    }
+
+    @Test
+    void get_document_summary_returns_summary() throws Exception {
+        UUID documentId = UUID.randomUUID();
+        when(documentService.findSummary(documentId)).thenReturn(Optional.of("Kurze Zusammenfassung"));
+
+        mockMvc.perform(get("/document/{documentId}/summary", documentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.summary").value("Kurze Zusammenfassung"));
+    }
+
+    @Test
+    void get_document_summary_returns_no_content_while_summary_is_not_generated_yet() throws Exception {
+        UUID documentId = UUID.randomUUID();
+        when(documentService.findSummary(documentId)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/document/{documentId}/summary", documentId))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void get_document_summary_of_missing_document_returns_not_found() throws Exception {
+        UUID missingId = UUID.randomUUID();
+        when(documentService.findDocumentById(missingId)).thenThrow(new DocumentNotFoundException(missingId));
+
+        mockMvc.perform(get("/document/{documentId}/summary", missingId))
+                .andExpect(status().isNotFound());
+
+        verify(documentService, never()).findSummary(any());
+    }
+
+    @Test
+    void get_document_summary_returns_503_when_search_index_is_unavailable() throws Exception {
+        UUID documentId = UUID.randomUUID();
+        when(documentService.findSummary(documentId))
+                .thenThrow(new SummaryUnavailableException(documentId, new IOException("down")));
+
+        mockMvc.perform(get("/document/{documentId}/summary", documentId))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503));
     }
 
     @Test

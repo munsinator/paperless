@@ -7,6 +7,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.InputStream;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface DocumentService {
@@ -27,4 +28,8 @@ public interface DocumentService {
     List<Document> findAllDocuments(String query);
 
     Document findDocumentById(UUID documentId);
+
+    // liest die Zusammenfassung aus dem Suchindex; leer, solange sie noch nicht erzeugt wurde;
+    // wirft SummaryUnavailableException, wenn der Index nicht erreichbar ist
+    Optional<String> findSummary(UUID documentId);
 }

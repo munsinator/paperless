@@ -140,6 +140,31 @@ paths:
                 format: binary
         "404":
           description: Document or stored file not found
+  /document/{documentId}/summary:
+    get:
+      tags:
+        - document-controller
+      operationId: findSummaryById
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The generated summary (stored in Elasticsearch)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseSummaryDTO"
+        "204":
+          description: The summary has not been generated yet
+        "404":
+          description: Document not found
+        "503":
+          description: The search index is currently not available
 components:
   schemas:
     AuthDTO:
@@ -190,6 +215,11 @@ components:
         nano:
           type: integer
           format: int32
+    ResponseSummaryDTO:
+      type: object
+      properties:
+        summary:
+          type: string
     ResponseDocumentDTO:
       type: object
       properties:

@@ -83,6 +83,27 @@ describe('DocumentService', () => {
         expect(titles).toEqual(['Zeta', 'Alpha']);
     });
 
+    it('loads the summary from the summary endpoint', () => {
+        let result: string | null | undefined;
+
+        service.getSummary('abc-123').subscribe(summary => (result = summary));
+
+        const req = httpMock.expectOne('/api/document/abc-123/summary');
+        expect(req.request.method).toBe('GET');
+        req.flush({ summary: 'Kurze Zusammenfassung' });
+        expect(result).toBe('Kurze Zusammenfassung');
+    });
+
+    it('maps a 204 response to null while the summary is not generated yet', () => {
+        let result: string | null | undefined;
+
+        service.getSummary('abc-123').subscribe(summary => (result = summary));
+
+        httpMock.expectOne('/api/document/abc-123/summary').flush(null, { status: 204, statusText: 'No Content' });
+        expect(result).toBeNull();
+        httpMock.verify();
+    });
+
     it('omits the type when none is selected', () => {
         const file = new File(['%PDF-1.7'], 'x.pdf', { type: 'application/pdf' });
 
