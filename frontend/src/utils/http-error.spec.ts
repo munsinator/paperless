@@ -9,7 +9,8 @@ describe('toErrorMessage', () => {
     it.each<[ErrorAction, string]>([
         ['search', 'Die Suche ist derzeit nicht verfügbar. Bitte versuche es später erneut.'],
         ['upload', 'Der Upload ist derzeit nicht verfügbar. Bitte versuche es später erneut.'],
-        ['load', 'Das Laden ist derzeit nicht verfügbar. Bitte versuche es später erneut.']
+        ['load', 'Das Laden ist derzeit nicht verfügbar. Bitte versuche es später erneut.'],
+        ['summary', 'Das Laden der Zusammenfassung ist derzeit nicht verfügbar. Bitte versuche es später erneut.']
     ])('names the action for a 503 when %s fails', (action, expected) => {
         expect(toErrorMessage(httpError(503), action)).toBe(expected);
     });
