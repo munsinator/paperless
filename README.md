@@ -121,6 +121,8 @@ To run in the background, use `docker compose up -d --build`. View logs with `do
 
 If the index was lost or Elasticsearch calls failed earlier, set `SEARCH_REINDEX_ON_STARTUP=true` in `.env` and restart the REST service (`docker compose up -d paperless-rest`). On startup all titles are rewritten from PostgreSQL; the OCR `text` stays untouched (it lives only in Elasticsearch). Set it back to `false` afterwards. Orphaned index entries are not removed; the search ignores IDs that no longer exist in PostgreSQL.
 
+The index is only created if it does not exist yet, and its mapping is `dynamic: strict`. If your Elasticsearch volume was created before the `summary` field was added to the mapping, saving a summary fails. Run `docker compose down -v` once (this also deletes the PostgreSQL and Silo volumes) so the index is created again with the new mapping.
+
 ### 3. Open and use the application
 
 | Service | Address |
