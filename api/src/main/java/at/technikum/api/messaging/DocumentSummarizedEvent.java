@@ -8,6 +8,7 @@ import lombok.Setter;
 @Getter
 @NoArgsConstructor
 public class DocumentSummarizedEvent {
+    // String weil keine UUIDs in JSON (über Message Queue)
     private String documentId;
     private String summary;
 }
