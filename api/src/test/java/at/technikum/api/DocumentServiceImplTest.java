@@ -37,6 +37,7 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -267,6 +268,27 @@ class DocumentServiceImplTest {
         assertThrows(SearchException.class, () -> documentService.findAllDocuments("rechnung"));
 
         verifyNoInteractions(documentRepository);
+    }
+
+    @Test
+    void update_summary_saves_summary_on_existing_document() {
+        Document document = documentWithId();
+        when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+
+        documentService.updateSummary(document.getId(), "Kurze Zusammenfassung");
+
+        assertEquals("Kurze Zusammenfassung", document.getSummary());
+        verify(documentRepository).save(document);
+    }
+
+    @Test
+    void update_summary_throws_not_found_and_saves_nothing_for_unknown_document() {
+        UUID unknownId = UUID.randomUUID();
+        when(documentRepository.findById(unknownId)).thenReturn(Optional.empty());
+
+        assertThrows(DocumentNotFoundException.class, () -> documentService.updateSummary(unknownId, "Summary"));
+
+        verify(documentRepository, never()).save(any());
     }
 
     private Document documentWithId() {
