@@ -2,6 +2,7 @@ package at.technikum.api.controller;
 
 import at.technikum.api.dto.request.RequestDocumentDTO;
 import at.technikum.api.dto.response.ResponseDocumentDTO;
+import at.technikum.api.dto.response.ResponseSummaryDTO;
 import at.technikum.api.mapper.DocumentMapper;
 import at.technikum.api.service.DocumentService;
 import at.technikum.api.service.DocumentServiceImpl;
@@ -101,6 +102,17 @@ public class DocumentController {
         log.debug("Get document request: id={}", documentId);
         Document document = documentService.findDocumentById(documentId);
         return ResponseEntity.ok(mapper.entityToDto(document));
+    }
+
+    // 404: Dokument unbekannt; 204: Summary wird noch erzeugt; 503: Suchindex nicht erreichbar
+    @GetMapping("/{documentId}/summary")
+    public ResponseEntity<ResponseSummaryDTO> findSummaryById(@PathVariable UUID documentId) {
+        log.debug("Get document summary request: id={}", documentId);
+        documentService.findDocumentById(documentId); // wirft DocumentNotFoundException für unbekannte IDs
+        return documentService.findSummary(documentId)
+        // Mapping weil Backend nicht Optinal an Client zurückgeben kann
+                .map(summary -> ResponseEntity.ok(new ResponseSummaryDTO(summary)))
+                .orElseGet(() -> ResponseEntity.noContent().build());
     }
 
     @DeleteMapping("/{documentId}")
