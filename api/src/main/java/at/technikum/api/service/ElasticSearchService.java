@@ -3,6 +3,7 @@ package at.technikum.api.service;
 import at.technikum.api.exceptions.SearchException;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch.core.GetResponse;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.elasticsearch.core.search.Hit;
 import lombok.RequiredArgsConstructor;
@@ -106,6 +107,22 @@ public class ElasticSearchService implements SearchService {
             log.info("Saved summary of document {} in search index", documentId);
         } catch (IOException | ElasticsearchException exception) {
             throw new SearchException("Saving summary in Elasticsearch failed", exception);
+        }
+    }
+
+    @Override
+    public Optional<String> findSummary(UUID documentId) {
+        try {
+            GetResponse<Map> response = client.get(get -> get
+                    .index(INDEX)
+                    .id(documentId.toString())
+                    .sourceIncludes(SUMMARY_FIELD), Map.class); // nur das Feld summary laden
+            if (!response.found() || response.source() == null) {
+                return Optional.empty(); // noch keine Zusammenfassung vorhanden
+            }
+            return Optional.ofNullable(response.source().get(SUMMARY_FIELD)).map(Object::toString);
+        } catch (IOException | ElasticsearchException exception) {
+            throw new SearchException("Reading summary from Elasticsearch failed", exception);
         }
     }
 

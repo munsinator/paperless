@@ -1,6 +1,7 @@
 package at.technikum.api.service;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface SearchService {
@@ -12,6 +13,8 @@ public interface SearchService {
     void saveText(UUID documentId, String text);
 
     void saveSummary(UUID documentId, String summary);
+
+    Optional<String> findSummary(UUID documentId);
 
     void delete(UUID documentId);
 }
