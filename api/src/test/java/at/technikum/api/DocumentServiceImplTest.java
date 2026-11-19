@@ -8,6 +8,7 @@ import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.exceptions.StorageException;
+import at.technikum.api.exceptions.SummaryUnavailableException;
 import at.technikum.api.repository.DocumentRepository;
 import at.technikum.api.repository.DocumentTypeRepository;
 import at.technikum.api.service.DocumentDeletedEvent;
@@ -271,24 +272,33 @@ class DocumentServiceImplTest {
     }
 
     @Test
-    void update_summary_saves_summary_on_existing_document() {
-        Document document = documentWithId();
-        when(documentRepository.findById(document.getId())).thenReturn(Optional.of(document));
+    void find_summary_returns_summary_from_search_index() {
+        UUID id = UUID.randomUUID();
+        when(searchService.findSummary(id)).thenReturn(Optional.of("Kurze Zusammenfassung"));
 
-        documentService.updateSummary(document.getId(), "Kurze Zusammenfassung");
+        assertEquals(Optional.of("Kurze Zusammenfassung"), documentService.findSummary(id));
 
-        assertEquals("Kurze Zusammenfassung", document.getSummary());
-        verify(documentRepository).save(document);
+        verifyNoInteractions(documentRepository);
     }
 
     @Test
-    void update_summary_throws_not_found_and_saves_nothing_for_unknown_document() {
-        UUID unknownId = UUID.randomUUID();
-        when(documentRepository.findById(unknownId)).thenReturn(Optional.empty());
+    void find_summary_returns_empty_when_no_summary_exists_yet() {
+        UUID id = UUID.randomUUID();
+        when(searchService.findSummary(id)).thenReturn(Optional.empty());
 
-        assertThrows(DocumentNotFoundException.class, () -> documentService.updateSummary(unknownId, "Summary"));
+        assertEquals(Optional.empty(), documentService.findSummary(id));
+    }
 
-        verify(documentRepository, never()).save(any());
+    @Test
+    void find_summary_wraps_search_failure_in_summary_unavailable_exception() {
+        UUID id = UUID.randomUUID();
+        SearchException cause = new SearchException("Reading summary from Elasticsearch failed", new IOException("down"));
+        when(searchService.findSummary(id)).thenThrow(cause);
+
+        SummaryUnavailableException exception =
+                assertThrows(SummaryUnavailableException.class, () -> documentService.findSummary(id));
+
+        assertSame(cause, exception.getCause());
     }
 
     private Document documentWithId() {
