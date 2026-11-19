@@ -1,7 +1,7 @@
 import { HttpErrorResponse } from '@angular/common/http';
 import { TestBed } from '@angular/core/testing';
 import { ActivatedRoute, convertToParamMap, provideRouter } from '@angular/router';
-import { Observable, of, throwError } from 'rxjs';
+import { defer, Observable, of, throwError } from 'rxjs';
 import { DocumentService } from '../../services/document.service';
 import { NotificationService } from '../../services/notification.service';
 import { DocumentDetailComponent } from './document-detail.component';
@@ -93,5 +93,97 @@ describe('DocumentDetailComponent download', () => {
         fixture.destroy();
 
         expect(URL.revokeObjectURL).toHaveBeenCalledWith('about:blank');
+    });
+});
+
+describe('DocumentDetailComponent summary', () => {
+    const documentService = {
+        getDocumentById: vi.fn(),
+        downloadDocument: vi.fn(),
+        getSummary: vi.fn()
+    };
+
+    // der KI-Tab wird erst geöffnet, wenn der Test es braucht: nur dann wird die Summary geladen
+    async function createComponent(summary$: Observable<string | null>) {
+        TestBed.configureTestingModule({
+            providers: [
+                provideRouter([]),
+                { provide: ActivatedRoute, useValue: { paramMap: of(convertToParamMap({ id: 'abc-123' })) } },
+                { provide: DocumentService, useValue: documentService },
+                { provide: NotificationService, useValue: { httpError: vi.fn() } }
+            ]
+        });
+        documentService.getDocumentById.mockReturnValue(of({ id: 'abc-123', title: 'Rechnung', createdAt: '', tags: [] }));
+        documentService.downloadDocument.mockReturnValue(of(new Blob(['%PDF-1.7'])));
+        documentService.getSummary.mockReturnValue(summary$);
+        const fixture = TestBed.createComponent(DocumentDetailComponent);
+        fixture.detectChanges();
+        await fixture.whenStable();
+        return fixture;
+    }
+
+    async function openAiTab(fixture: Awaited<ReturnType<typeof createComponent>>) {
+        fixture.componentInstance.activeTab.set('ai');
+        fixture.detectChanges();
+        await fixture.whenStable();
+        fixture.detectChanges();
+    }
+
+    beforeEach(() => {
+        vi.clearAllMocks();
+        URL.createObjectURL = vi.fn(() => 'about:blank');
+        URL.revokeObjectURL = vi.fn();
+    });
+
+    afterEach(() => vi.useRealTimers());
+
+    it('does not load the summary while the ai tab is closed', async () => {
+        await createComponent(of('Text'));
+
+        expect(documentService.getSummary).not.toHaveBeenCalled();
+    });
+
+    it('shows the summary as soon as it exists', async () => {
+        const fixture = await createComponent(of('Kurze Zusammenfassung'));
+
+        await openAiTab(fixture);
+
+        expect(documentService.getSummary).toHaveBeenCalledWith('abc-123');
+        expect(fixture.componentInstance.summaryState()).toEqual({ status: 'ready', text: 'Kurze Zusammenfassung' });
+        expect(fixture.nativeElement.textContent).toContain('Kurze Zusammenfassung');
+    });
+
+    it('shows a waiting state while the backend has no summary yet', async () => {
+        const fixture = await createComponent(of(null));
+
+        await openAiTab(fixture);
+
+        expect(fixture.componentInstance.summaryState().status).toBe('pending');
+        expect(fixture.nativeElement.textContent).toContain('wird erstellt');
+    });
+
+    it('shows an error message when the summary cannot be loaded', async () => {
+        const fixture = await createComponent(throwError(() => new HttpErrorResponse({ status: 503 })));
+
+        await openAiTab(fixture);
+
+        expect(fixture.componentInstance.summaryErrorMessage())
+            .toBe('Das Laden der Zusammenfassung ist derzeit nicht verfügbar. Bitte versuche es später erneut.');
+        expect(fixture.nativeElement.textContent).toContain('nicht verfügbar');
+    });
+
+    it('stops waiting after the maximum number of polls and offers to check again', async () => {
+        const request = vi.fn(() => of(null)); // wird bei jedem (Wieder-)Abonnieren aufgerufen = eine HTTP-Anfrage
+        const fixture = await createComponent(defer(request));
+        vi.useFakeTimers(); // erst jetzt: whenStable() kommt mit Fake-Timern nicht zurück
+
+        fixture.componentInstance.activeTab.set('ai');
+        fixture.detectChanges();
+        await vi.advanceTimersByTimeAsync(3000 * 25);
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.summaryState().status).toBe('timeout');
+        expect(request).toHaveBeenCalledTimes(20);
+        expect(fixture.nativeElement.textContent).toContain('Erneut prüfen');
     });
 });
