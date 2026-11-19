@@ -3,13 +3,16 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs';
+import { exhaustMap, map, take, takeWhile, timer } from 'rxjs';
 import { DOCUMENT_TYPE_OPTIONS } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
 import { DocumentFormService } from '../../services/document-form.service';
 import { NotificationService } from '../../services/notification.service';
 import { toErrorMessage } from '../../utils/http-error';
+
+const SUMMARY_POLL_INTERVAL_MS = 3000;
+const SUMMARY_MAX_POLLS = 20; // ca. 1 Minute, danach muss der Benutzer den Tab neu öffnen
 
 @Component({
     selector: 'app-document-detail',
@@ -53,6 +56,23 @@ export class DocumentDetailComponent {
     readonly previewResource = rxResource({
         params: () => this.documentId() || undefined,
         stream: ({ params: id }) => this.documentService.downloadDocument(id)
+    });
+
+    // Die Summary entsteht asynchron (OCR -> GenAI-Worker): solange das Backend 204 liefert (null), wird nachgefragt.
+    // Läuft nur, solange der KI-Tab offen ist; beim Verlassen von Tab oder Seite bricht rxResource den Stream ab.
+    readonly summaryResource = rxResource({
+        params: () => this.activeTab() === 'ai' ? this.documentId() || undefined : undefined,
+        stream: ({ params: id }) => timer(0, SUMMARY_POLL_INTERVAL_MS).pipe(
+            take(SUMMARY_MAX_POLLS),
+            exhaustMap(() => this.documentService.getSummary(id)), // keine neue Anfrage, solange die letzte läuft
+            takeWhile(summary => summary === null, true) // inklusive: der erste Wert ≠ null wird noch ausgegeben
+        )
+    });
+
+    readonly summary = computed(() => this.summaryResource.hasValue() ? this.summaryResource.value() : null);
+    readonly summaryErrorMessage = computed(() => {
+        const error = this.summaryResource.error();
+        return error ? toErrorMessage(this.unwrap(error), 'summary') : null;
     });
 
     readonly safeFileUrl = signal<SafeResourceUrl | null>(null);
