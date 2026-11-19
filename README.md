@@ -48,7 +48,8 @@ All services use these names and the same `.env` variables:
 | Storage variables | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` |
 | Upload event | exchange `document.events` (fanout) → queue `ocr.document.events`, payload `{ documentId, documentName }` |
 | OCR result event | exchange `ocr.events` (fanout) → queue `api.ocr.events`, payload `{ documentId, documentName, content }` |
-| Search index | `documents`, fields `title` and `text`, Elasticsearch `_id` = document ID |
+| Summary event | exchange `genai.events` (fanout) → queue `api.genai.events`, payload `{ documentId, summary }` |
+| Search index | `documents`, fields `title`, `text` and `summary`, Elasticsearch `_id` = document ID |
 
 ### REST interface
 
@@ -67,8 +68,13 @@ All paths below use the host prefix `http://localhost/api`. Document endpoints r
 | PUT | `/document/{id}` | Replace editable metadata |
 | DELETE | `/document/{id}` | Delete the document and its stored PDF |
 | GET | `/document/{id}/data` | Download the stored PDF (`404` if the document or its file does not exist) |
+| GET | `/document/{id}/summary` | Read the generated summary: `200 { "summary": "..." }`, `204` while it does not exist yet, `404` for an unknown document, `503` if the search index is unavailable |
 
 If the storage is unavailable, the upload fails with `503` and nothing is persisted (the database transaction is rolled back). Uploads are limited to 15 MB.
+
+Summaries live only in Elasticsearch (field `summary`, stored but not searchable), not in PostgreSQL: we do not know how long a summary gets. The API writes it when the summary event arrives and reads it through `GET /document/{id}/summary`. The detail page shows it in the AI tab and asks again every 3 seconds (at most 20 times) while the endpoint answers `204`; after that the user can check again manually.
+
+Known limitation: the summary event only reports success. If the GenAI call fails for good, no event is sent, so the API cannot tell "still being generated" from "failed" and answers `204` in both cases. The UI therefore says "No summary available yet" after the waiting time. Telling these cases apart would need a failure event from the GenAI worker, which we deliberately did not add to the contract.
 
 Both document creation endpoints return `201 Created` with a `Location` header. Listing documents returns `200` with results, or `204 No Content` when there are none (including searches without matches).
 
