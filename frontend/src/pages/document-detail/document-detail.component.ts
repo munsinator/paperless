@@ -3,7 +3,7 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { ReactiveFormsModule } from '@angular/forms';
 import { rxResource, toSignal } from '@angular/core/rxjs-interop';
-import { exhaustMap, map, take, takeWhile, timer } from 'rxjs';
+import { map, repeat, takeWhile } from 'rxjs';
 import { DOCUMENT_TYPE_OPTIONS } from '../../models/document.model';
 import { DocumentService } from '../../services/document.service';
 import { DomSanitizer, SafeResourceUrl } from '@angular/platform-browser';
@@ -12,7 +12,15 @@ import { NotificationService } from '../../services/notification.service';
 import { toErrorMessage } from '../../utils/http-error';
 
 const SUMMARY_POLL_INTERVAL_MS = 3000;
-const SUMMARY_MAX_POLLS = 20; // ca. 1 Minute, danach muss der Benutzer den Tab neu öffnen
+const SUMMARY_MAX_POLLS = 20; // ca. 1 Minute, danach kann der Benutzer manuell erneut prüfen
+
+type SummaryState =
+    | { status: 'pending' } // wird noch erzeugt
+    | { status: 'timeout' } // nach SUMMARY_MAX_POLLS Versuchen noch keine Summary
+    | { status: 'ready'; text: string };
+
+const SUMMARY_PENDING: SummaryState = { status: 'pending' };
+const SUMMARY_TIMED_OUT: SummaryState = { status: 'timeout' };
 
 @Component({
     selector: 'app-document-detail',
@@ -59,17 +67,26 @@ export class DocumentDetailComponent {
     });
 
     // Die Summary entsteht asynchron (OCR -> GenAI-Worker): solange das Backend 204 liefert (null), wird nachgefragt.
-    // Läuft nur, solange der KI-Tab offen ist; beim Verlassen von Tab oder Seite bricht rxResource den Stream ab.
+    // Läuft nur, solange der KI-Tab offen ist: wechselt params auf undefined (anderer Tab) oder wird die Komponente
+    // zerstört, beendet rxResource den Stream.
     readonly summaryResource = rxResource({
         params: () => this.activeTab() === 'ai' ? this.documentId() || undefined : undefined,
-        stream: ({ params: id }) => timer(0, SUMMARY_POLL_INTERVAL_MS).pipe(
-            take(SUMMARY_MAX_POLLS),
-            exhaustMap(() => this.documentService.getSummary(id)), // keine neue Anfrage, solange die letzte läuft
-            takeWhile(summary => summary === null, true) // inklusive: der erste Wert ≠ null wird noch ausgegeben
+        stream: ({ params: id }) => this.documentService.getSummary(id).pipe(
+            // wiederholt die Anfrage erst nach der Antwort plus Pause, dadurch überlappen sich Anfragen nie
+            repeat({ count: SUMMARY_MAX_POLLS, delay: SUMMARY_POLL_INTERVAL_MS }),
+            map((text, attempt): SummaryState => {
+                if (text !== null) return { status: 'ready', text };
+                return attempt === SUMMARY_MAX_POLLS - 1 ? SUMMARY_TIMED_OUT : SUMMARY_PENDING;
+            }),
+            takeWhile(state => state.status === 'pending', true) // inklusive: ready bzw. timeout wird noch ausgegeben
         )
     });
 
-    readonly summary = computed(() => this.summaryResource.hasValue() ? this.summaryResource.value() : null);
+    // Beim erneuten Prüfen ("reload") steht bis zur ersten Antwort noch der alte Wert (timeout) in der Resource.
+    readonly summaryState = computed<SummaryState>(() => {
+        const state = this.summaryResource.hasValue() ? this.summaryResource.value() : SUMMARY_PENDING;
+        return state.status === 'timeout' && this.summaryResource.isLoading() ? SUMMARY_PENDING : state;
+    });
     readonly summaryErrorMessage = computed(() => {
         const error = this.summaryResource.error();
         return error ? toErrorMessage(this.unwrap(error), 'summary') : null;
