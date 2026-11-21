@@ -90,6 +90,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.SERVICE_UNAVAILABLE);
     }
 
+    @ExceptionHandler(SummaryUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleSummaryUnavailableException(SummaryUnavailableException exception) {
+        logger.warn("Summary unavailable: {}", exception.getMessage()); // Stacktrace hat der Service schon geloggt
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                "Service Unavailable",
+                "The summary is currently not available"
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException exception) {
         logger.warn("Upload too large: {}", exception.getMessage());

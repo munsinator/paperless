@@ -8,6 +8,7 @@ import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.exceptions.StorageException;
+import at.technikum.api.exceptions.SummaryUnavailableException;
 import at.technikum.api.repository.DocumentRepository;
 import at.technikum.api.repository.DocumentTypeRepository;
 import at.technikum.api.service.DocumentDeletedEvent;
@@ -267,6 +268,36 @@ class DocumentServiceImplTest {
         assertThrows(SearchException.class, () -> documentService.findAllDocuments("rechnung"));
 
         verifyNoInteractions(documentRepository);
+    }
+
+    @Test
+    void find_summary_returns_summary_from_search_index() {
+        UUID id = UUID.randomUUID();
+        when(searchService.findSummary(id)).thenReturn(Optional.of("Kurze Zusammenfassung"));
+
+        assertEquals(Optional.of("Kurze Zusammenfassung"), documentService.findSummary(id));
+
+        verifyNoInteractions(documentRepository);
+    }
+
+    @Test
+    void find_summary_returns_empty_when_no_summary_exists_yet() {
+        UUID id = UUID.randomUUID();
+        when(searchService.findSummary(id)).thenReturn(Optional.empty());
+
+        assertEquals(Optional.empty(), documentService.findSummary(id));
+    }
+
+    @Test
+    void find_summary_wraps_search_failure_in_summary_unavailable_exception() {
+        UUID id = UUID.randomUUID();
+        SearchException cause = new SearchException("Reading summary from Elasticsearch failed", new IOException("down"));
+        when(searchService.findSummary(id)).thenThrow(cause);
+
+        SummaryUnavailableException exception =
+                assertThrows(SummaryUnavailableException.class, () -> documentService.findSummary(id));
+
+        assertSame(cause, exception.getCause());
     }
 
     private Document documentWithId() {

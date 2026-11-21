@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import java.io.IOException;
 
 import static at.technikum.api.service.ElasticSearchService.INDEX;
+import static at.technikum.api.service.ElasticSearchService.SUMMARY_FIELD;
 import static at.technikum.api.service.ElasticSearchService.TEXT_FIELD;
 import static at.technikum.api.service.ElasticSearchService.TITLE_FIELD;
 
@@ -51,10 +52,11 @@ public class SearchIndexInitializer implements ApplicationRunner {
             client.indices().create(create -> create
                     .index(INDEX)
                     .mappings(mappings -> mappings
-                            .dynamic(DynamicMapping.Strict) // nur title und text, keine fremden Felder
+                            .dynamic(DynamicMapping.Strict) // nur title, text und summary, keine fremden Felder
                             .properties(TITLE_FIELD, property -> property.text(text -> text
                                     .fields("keyword", field -> field.keyword(keyword -> keyword)))) // text durchsuchung und keyword durchsuchung
-                            .properties(TEXT_FIELD, property -> property.text(text -> text))));
+                            .properties(TEXT_FIELD, property -> property.text(text -> text))
+                            .properties(SUMMARY_FIELD, property -> property.text(text -> text.index(false))))); // nur gespeichert, nicht durchsuchbar
         } catch (ElasticsearchException exception) {
             // der Indexing-Worker kann den Index zwischen Prüfung und Anlegen erzeugt haben
             if (exception.error() == null || !ALREADY_EXISTS.equals(exception.error().type())) {

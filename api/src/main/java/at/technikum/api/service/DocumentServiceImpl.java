@@ -2,6 +2,8 @@ package at.technikum.api.service;
 
 import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
+import at.technikum.api.exceptions.SearchException;
+import at.technikum.api.exceptions.SummaryUnavailableException;
 import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
@@ -22,6 +24,7 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -137,6 +140,16 @@ public class DocumentServiceImpl implements DocumentService {
     public Document findDocumentById(UUID documentId) {
         return documentRepository.findById(documentId)
                 .orElseThrow(() -> new DocumentNotFoundException(documentId));
+    }
+
+    @Override
+    public Optional<String> findSummary(UUID documentId) {
+        try {
+            return searchService.findSummary(documentId);
+        } catch (SearchException exception) {
+            log.warn("Summary of document {} could not be read from the search index", documentId, exception);
+            throw new SummaryUnavailableException(documentId, exception);
+        }
     }
 
     private DocumentType resolveType(DocumentTypeEnum requestedType) {
