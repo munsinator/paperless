@@ -55,6 +55,12 @@
             <artifactId>spring-boot-starter-amqp-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- Source: https://mvnrepository.com/artifact/org.springframework.ai/spring-ai-autoconfigure-model-google-genai -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-autoconfigure-model-google-genai</artifactId>
+            <version>2.0.3</version>
+        </dependency>
     </dependencies>
 
     <build>

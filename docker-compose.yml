@@ -120,6 +120,20 @@ services:
       paperless-storage:
         condition: service_healthy
 
+  genai:
+    build: ./genai-worker
+    container_name: paperless-genai
+    environment:
+      SPRING_RABBITMQ_HOST: paperless-mq
+      RABBIT_USER: ${RABBIT_USER}
+      RABBIT_PASSWORD: ${RABBIT_PASSWORD}
+      RABBIT_VHOST: ${RABBIT_VHOST}
+    depends_on:
+      paperless-rest:
+        condition: service_healthy
+      paperless-mq:
+        condition: service_healthy
+
   postgres:
     image: postgres:16-alpine
     container_name: paperless-db
