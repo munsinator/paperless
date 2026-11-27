@@ -221,4 +221,72 @@ describe('DocumentDetailComponent summary', () => {
         expect(request).toHaveBeenCalledTimes(20);
         expect(fixture.nativeElement.textContent).toContain('Erneut prüfen');
     });
+
+    it('keeps polling until the summary appears and then stops', async () => {
+        const answers: (string | null)[] = [null, null, 'Fertig'];
+        let call = 0;
+        const request = vi.fn(() => of(answers[call++] ?? null));
+        const fixture = await createComponent(defer(request));
+        vi.useFakeTimers();
+
+        fixture.componentInstance.activeTab.set('ai');
+        fixture.detectChanges();
+        await vi.advanceTimersByTimeAsync(3000 * 10);
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.summaryState()).toEqual({ status: 'ready', text: 'Fertig' });
+        expect(request).toHaveBeenCalledTimes(3); // danach keine weiteren Anfragen
+    });
+
+    it('stops polling when the user leaves the ai tab', async () => {
+        const request = vi.fn(() => of(null));
+        const fixture = await createComponent(defer(request));
+        vi.useFakeTimers();
+
+        fixture.componentInstance.activeTab.set('ai');
+        fixture.detectChanges();
+        await vi.advanceTimersByTimeAsync(3000 * 2);
+        fixture.componentInstance.activeTab.set('metadata');
+        fixture.detectChanges();
+        const callsAtLeave = request.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(3000 * 10);
+
+        expect(request.mock.calls.length).toBeLessThanOrEqual(callsAtLeave + 1); // höchstens noch die Antwort im Flug
+    });
+
+    it('checks again on request after the timeout and shows the summary that arrived meanwhile', async () => {
+        let summary: string | null = null;
+        const request = vi.fn(() => of(summary));
+        const fixture = await createComponent(defer(request));
+        vi.useFakeTimers();
+
+        fixture.componentInstance.activeTab.set('ai');
+        fixture.detectChanges();
+        await vi.advanceTimersByTimeAsync(3000 * 25);
+        expect(fixture.componentInstance.summaryState().status).toBe('timeout');
+
+        summary = 'Jetzt da';
+        fixture.componentInstance.summaryResource.reload();
+        await vi.advanceTimersByTimeAsync(10);
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.summaryState()).toEqual({ status: 'ready', text: 'Jetzt da' });
+    });
+
+    it('shows summary text containing html as plain text', async () => {
+        const fixture = await createComponent(of('<img src=x onerror=alert(1)> <b>fett</b>'));
+
+        await openAiTab(fixture);
+
+        expect(fixture.nativeElement.querySelector('img')).toBeNull();
+        expect(fixture.nativeElement.textContent).toContain('<b>fett</b>');
+    });
+
+    it('shows a not-found message when the document was deleted meanwhile', async () => {
+        const fixture = await createComponent(throwError(() => new HttpErrorResponse({ status: 404 })));
+
+        await openAiTab(fixture);
+
+        expect(fixture.componentInstance.summaryErrorMessage()).toContain('nicht gefunden');
+    });
 });
