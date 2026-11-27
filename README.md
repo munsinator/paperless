@@ -55,6 +55,19 @@ All services use these names and the same `.env` variables:
 | Summary event | exchange `genai.events` (fanout) → queue `api.genai.events`, payload `{ documentId, summary }` |
 | Search index | `documents`, fields `title`, `text` and `summary`, Elasticsearch `_id` = document ID |
 
+### Who owns which exchange and queue
+
+An exchange belongs to the service that publishes to it, a queue to the service that reads from it. If two services declare the same thing, the arguments have to match (durable, fanout).
+
+| Exchange | Published by | Queue | Read by | Why |
+| --- | --- | --- | --- | --- |
+| `document.events` | REST API | `ocr.document.events` | OCR worker | start OCR after an upload |
+| `ocr.events` | OCR worker | `api.ocr.events` | REST API | save the OCR text in Elasticsearch |
+| `ocr.events` | OCR worker | `genai.ocr.events` | GenAI worker | needs the same text for the summary |
+| `genai.events` | GenAI worker | `api.genai.events` | REST API | save the summary in Elasticsearch |
+
+A failed message is retried three times and then dropped, we have no dead-letter queue. So if Elasticsearch is down when a summary arrives, that summary is lost and the document keeps answering `204`.
+
 ### REST interface
 
 The API declares `document.events` at startup via `RabbitAdmin.initialize()`. It also provisions the durable OCR job queue and binding so jobs can wait while the worker is offline. The worker does not declare this exchange. Docker Compose starts the worker after the API is ready; `/health` returns 503 until application startup has completed.
