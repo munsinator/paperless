@@ -107,6 +107,17 @@ Copy-Item .env.example .env
 
 The `.env` file is git-ignored. The database credentials must match the PostgreSQL service configuration.
 
+#### GenAI key (Gemini)
+
+The summaries are created by the GenAI worker with Google Gemini, which needs an API key:
+
+1. Sign in at https://aistudio.google.com/app/apikey and create an API key.
+2. Put it into `.env`: `SPRING_AI_GOOGLE_GENAI_API_KEY=<your key>` (never commit it; `.env` is git-ignored, `.env.example` only contains an empty placeholder).
+
+The free tier is rate-limited (requests per minute and per day, the exact limits are shown in AI Studio and may change). When Gemini answers `429 Too Many Requests`, the worker waits and retries instead of failing right away; if the quota stays exhausted, the summary of that document is not created.
+
+Without a key the application still works: upload, OCR and search are not affected. The GenAI worker logs an error for each document, and no summary is created (the AI tab then shows "Noch keine Zusammenfassung verfügbar").
+
 ### 2. Build and start all services
 
 Start the application with Docker Compose from project root:
