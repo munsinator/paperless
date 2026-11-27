@@ -12,7 +12,6 @@ type ApiDocument = {
     title: string;
     documentType?: DocumentType | null;
     createdAt?: string | null;
-    ocrText?: string | null;
     tags?: string[] | null;
     fileUrl?: string | null;
 };
@@ -53,6 +52,13 @@ export class DocumentService {
         this.logger.debug(SOURCE,`Loading summary of document ${id}`);
         return this.http.get<{ summary: string } | null>(`${this.apiUrl}/${encodeURIComponent(id)}/summary`)
             .pipe(map(response => response?.summary ?? null));
+    }
+
+    // 204 (OCR noch nicht fertig) kommt ohne Body zurück und wird zu null
+    getText(id: string): Observable<string | null> {
+        this.logger.debug(SOURCE,`Loading OCR text of document ${id}`);
+        return this.http.get<{ text: string } | null>(`${this.apiUrl}/${encodeURIComponent(id)}/text`)
+            .pipe(map(response => response?.text ?? null));
     }
 
     // schickt die PDF zusammen mit den Metadaten als multipart/form-data ans Backend
@@ -99,7 +105,6 @@ export class DocumentService {
             documentType: response.documentType ?? undefined,
             createdAt: response.createdAt ?? '',
             tags: response.tags ?? [],
-            ocrText: response.ocrText ?? undefined,
             fileUrl: response.fileUrl ?? undefined
         };
     }

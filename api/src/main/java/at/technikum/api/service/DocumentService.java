@@ -32,4 +32,8 @@ public interface DocumentService {
     // liest die Zusammenfassung aus dem Suchindex; leer, solange sie noch nicht erzeugt wurde;
     // wirft SummaryUnavailableException, wenn der Index nicht erreichbar ist
     Optional<String> findSummary(UUID documentId);
+
+    // liest den OCR-Text aus dem Suchindex; leer, solange die OCR noch nicht fertig ist;
+    // wirft TextUnavailableException, wenn der Index nicht erreichbar ist
+    Optional<String> findText(UUID documentId);
 }

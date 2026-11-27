@@ -225,7 +225,15 @@
                         <label for="ocr-text" class="block text-xs font-medium text-slate-700">
                             Extrahierter OCR Text
                         </label>
-                        <textarea id="ocr-text" rows="6" readonly [value]="document()?.ocrText || 'Kein OCR Text verfügbar.'" class="w-full bg-slate-50 text-slate-600 font-mono text-xs border border-slate-200 rounded-md p-2.5 focus:outline-none resize-none cursor-default"></textarea>
+                        <textarea id="ocr-text" rows="6" readonly
+                            [value]="textErrorMessage() ?? ocrText() ?? (textResource.isLoading() ? 'Der OCR Text wird geladen …' : 'Noch kein OCR Text verfügbar.')"
+                            class="w-full bg-slate-50 text-slate-600 font-mono text-xs border border-slate-200 rounded-md p-2.5 focus:outline-none resize-none cursor-default"></textarea>
+                        @if (!textResource.isLoading() && !textErrorMessage() && !ocrText()) {
+                            <button type="button" (click)="textResource.reload()"
+                                class="text-xs font-medium text-slate-700 underline hover:text-slate-900 cursor-pointer">
+                                Erneut prüfen
+                            </button>
+                        }
                     </div>
 
                 </div>

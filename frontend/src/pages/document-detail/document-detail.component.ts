@@ -92,6 +92,17 @@ export class DocumentDetailComponent {
         return error ? toErrorMessage(this.unwrap(error), 'summary') : null;
     });
 
+    // Der OCR-Text liegt nur im Suchindex (nicht in der DB). Wie die Summary wird er erst beim Öffnen des KI-Tabs geladen.
+    readonly textResource = rxResource({
+        params: () => this.activeTab() === 'ai' ? this.documentId() || undefined : undefined,
+        stream: ({ params: id }) => this.documentService.getText(id)
+    });
+    readonly ocrText = computed(() => this.textResource.hasValue() ? this.textResource.value() : null);
+    readonly textErrorMessage = computed(() => {
+        const error = this.textResource.error();
+        return error ? toErrorMessage(this.unwrap(error), 'text') : null;
+    });
+
     readonly safeFileUrl = signal<SafeResourceUrl | null>(null);
 
     readonly editForm = this.documentForm.createForm();

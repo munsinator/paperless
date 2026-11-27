@@ -21,9 +21,6 @@ public class Document {
 
     private String title;
 
-    @Column(columnDefinition = "TEXT")
-    private String ocrText;
-
     private String fileUrl;
     private LocalDate createdAt;
 
