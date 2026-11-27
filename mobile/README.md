@@ -98,16 +98,16 @@ gradle assembleDebug -PappUrl=http://192.168.0.10/
 
 ## Test checklist
 
-`gradle assembleDebug` passes with Gradle 9.2.1, AGP 9.0.1 and `compileSdk 34`. The boxes below are for the manual test in the emulator and are still open.
+`gradle assembleDebug` passes with Gradle 9.2.1, AGP 9.0.1 and `compileSdk 34`. The boxes below are the manual test in the Android emulator (Pixel 4, API 33).
 
-- [ ] App starts and shows the login page
-- [ ] Register and log in
-- [ ] Search gives the same results as the web UI
-- [ ] Upload `hello-world.pdf` (file picker opens, document appears)
-- [ ] "Herunterladen" saves the PDF to Downloads
-- [ ] Summary shows up on the detail page once the GenAI worker has run
-- [ ] Server stopped: error page and retry work
-- [ ] Back button and rotation behave as in the spec
+- [x] App starts and shows the login page
+- [x] Register and log in
+- [x] Search gives the same results as the web UI
+- [x] Upload `hello-world.pdf` (file picker opens, document appears)
+- [x] "Herunterladen" saves the PDF to Downloads
+- [ ] Summary shows up on the detail page once the GenAI worker has run (open: the GenAI worker is not part of the stack yet)
+- [x] Server stopped: error page and retry work
+- [x] Back button and rotation behave as in the spec
 
 ## What we had to fix by hand
 
