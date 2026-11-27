@@ -27,7 +27,10 @@ Upload ─► REST: save metadata in PostgreSQL ─► store PDF in Silo ─► 
             └─► after commit: DocumentSavedEvent ─► exchange document.events
                   └─► OCR worker: load PDF from Silo, run Tesseract
                         └─► DocumentOcrCompletedEvent ─► exchange ocr.events
-                              └─► REST result listener: add OCR text to the Elasticsearch entry
+                              ├─► REST result listener: add OCR text to the Elasticsearch entry
+                              └─► (same event, queue genai.ocr.events) GenAI worker: ask Gemini for a summary
+                                    └─► DocumentSummarizedEvent ─► exchange genai.events
+                                          └─► REST summary listener: add the summary to the Elasticsearch entry
 Search ─► REST ─► Elasticsearch (ranked document IDs) ─► load documents from PostgreSQL
 ```
 
@@ -48,6 +51,7 @@ All services use these names and the same `.env` variables:
 | Storage variables | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` |
 | Upload event | exchange `document.events` (fanout) → queue `ocr.document.events`, payload `{ documentId, documentName }` |
 | OCR result event | exchange `ocr.events` (fanout) → queue `api.ocr.events`, payload `{ documentId, documentName, content }` |
+| GenAI worker input | the worker's own queue `genai.ocr.events`, bound to the OCR result exchange `ocr.events` (same event as the REST service, payload `{ documentId, documentName, content }`) |
 | Summary event | exchange `genai.events` (fanout) → queue `api.genai.events`, payload `{ documentId, summary }` |
 | Search index | `documents`, fields `title`, `text` and `summary`, Elasticsearch `_id` = document ID |
 
@@ -152,6 +156,7 @@ The repository contains `hello-world.pdf` (text: "Hello World") for a quick end-
 2. Upload `hello-world.pdf` with a title that does **not** contain "Hello", e.g. `Test document`.
 3. Wait a few seconds for the OCR worker (`docker compose logs -f ocr-worker` shows `OCR completed for documentId=...`).
 4. Search for `Hello` (or the typo `helo`, the search is fuzzy): the document appears, found by its OCR text and not by its title.
+5. Open the document and switch to the AI tab: it shows the extracted OCR text and, once the GenAI worker has finished (`docker compose logs -f genai-worker`), the summary. The page asks again every few seconds while the summary is still being created. This step needs the Gemini key from step 1.
 
 Optional check of the index: `curl http://localhost:9200/documents/_search?q=text:hello`
 
