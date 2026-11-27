@@ -16,6 +16,7 @@ The current implementation supports user registration and login, document metada
 | Object storage | Silo (`pgsty/silo`, MinIO-compatible fork), MinIO Java client |
 | Search engine | Elasticsearch 9.4, `elasticsearch-java` client |
 | GenAI worker / provider (planned) | Gemini integration |
+| Mobile app (`mobile/`) | Android, Java, `WebView` around the web UI, generated with an AI coding tool |
 
 
 ## Architecture
@@ -170,6 +171,12 @@ The repository contains `hello-world.pdf` (text: "Hello World") for a quick end-
 
 Optional check of the index: `curl http://localhost:9200/documents/_search?q=text:hello`
 
+
+### 5. Mobile app (optional)
+
+The `mobile/` folder contains an Android app: a thin `WebView` shell that shows the web UI from step 3. Start the stack first, then open `mobile/` in Android Studio and run it on an emulator (the emulator reaches the host as `10.0.2.2`). Spec, the AI prompt, build steps for the command line and for a real phone are in [mobile/README.md](mobile/README.md).
+
+Known limitation: the PDF preview on the detail page stays empty in the app, because the Android WebView cannot show PDFs inside an `<iframe>`. The "Herunterladen" button works and saves the file to the phone's Downloads folder. A real preview would need PDF.js in the frontend, which we decided against for now.
 
 ### How to stop the application
 
