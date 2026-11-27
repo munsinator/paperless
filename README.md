@@ -28,7 +28,7 @@ Upload ─► REST: save metadata in PostgreSQL ─► store PDF in Silo ─► 
                   └─► OCR worker: load PDF from Silo, run Tesseract
                         └─► DocumentOcrCompletedEvent ─► exchange ocr.events
                               ├─► REST result listener: add OCR text to the Elasticsearch entry
-                              └─► (same event, queue genai.ocr.events) GenAI worker: ask Gemini for a summary
+                              └─► GenAI worker (queue genai.ocr.events): ask Gemini for a summary
                                     └─► DocumentSummarizedEvent ─► exchange genai.events
                                           └─► REST summary listener: add the summary to the Elasticsearch entry
 Search ─► REST ─► Elasticsearch (ranked document IDs) ─► load documents from PostgreSQL
@@ -51,7 +51,7 @@ All services use these names and the same `.env` variables:
 | Storage variables | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` |
 | Upload event | exchange `document.events` (fanout) → queue `ocr.document.events`, payload `{ documentId, documentName }` |
 | OCR result event | exchange `ocr.events` (fanout) → queue `api.ocr.events`, payload `{ documentId, documentName, content }` |
-| GenAI worker input | the worker's own queue `genai.ocr.events`, bound to the OCR result exchange `ocr.events` (same event as the REST service, payload `{ documentId, documentName, content }`) |
+| GenAI worker input | queue `genai.ocr.events`, bound to `ocr.events`, same payload as above |
 | Summary event | exchange `genai.events` (fanout) → queue `api.genai.events`, payload `{ documentId, summary }` |
 | Search index | `documents`, fields `title`, `text` and `summary`, Elasticsearch `_id` = document ID |
 
@@ -124,16 +124,13 @@ Copy-Item .env.example .env
 
 The `.env` file is git-ignored. The database credentials must match the PostgreSQL service configuration.
 
-#### GenAI key (Gemini)
+#### Gemini key
 
-The summaries are created by the GenAI worker with Google Gemini, which needs an API key:
+The GenAI worker needs a Gemini API key. Create one at https://aistudio.google.com/app/apikey and put it into `.env` as `SPRING_AI_GOOGLE_GENAI_API_KEY`.
 
-1. Sign in at https://aistudio.google.com/app/apikey and create an API key.
-2. Put it into `.env`: `SPRING_AI_GOOGLE_GENAI_API_KEY=<your key>` (never commit it; `.env` is git-ignored, `.env.example` only contains an empty placeholder).
+The free tier has rate limits (see AI Studio for the current numbers). On a `429` the worker waits and tries again.
 
-The free tier is rate-limited (requests per minute and per day, the exact limits are shown in AI Studio and may change). When Gemini answers `429 Too Many Requests`, the worker waits and retries instead of failing right away; if the quota stays exhausted, the summary of that document is not created.
-
-Without a key the application still works: upload, OCR and search are not affected. The GenAI worker logs an error for each document, and no summary is created (the AI tab then shows "Noch keine Zusammenfassung verfügbar").
+Without a key everything else still works. The worker logs an error and no summary is created, so the AI tab just says there is none yet.
 
 ### 2. Build and start all services
 
@@ -169,7 +166,7 @@ The repository contains `hello-world.pdf` (text: "Hello World") for a quick end-
 2. Upload `hello-world.pdf` with a title that does **not** contain "Hello", e.g. `Test document`.
 3. Wait a few seconds for the OCR worker (`docker compose logs -f ocr-worker` shows `OCR completed for documentId=...`).
 4. Search for `Hello` (or the typo `helo`, the search is fuzzy): the document appears, found by its OCR text and not by its title.
-5. Open the document and switch to the AI tab: it shows the extracted OCR text and, once the GenAI worker has finished (`docker compose logs -f genai-worker`), the summary. The page asks again every few seconds while the summary is still being created. This step needs the Gemini key from step 1.
+5. Open the document and go to the AI tab. The OCR text is there right away, the summary a few seconds later (needs the Gemini key).
 
 Optional check of the index: `curl http://localhost:9200/documents/_search?q=text:hello`
 
