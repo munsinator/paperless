@@ -100,11 +100,12 @@ describe('DocumentDetailComponent summary', () => {
     const documentService = {
         getDocumentById: vi.fn(),
         downloadDocument: vi.fn(),
-        getSummary: vi.fn()
+        getSummary: vi.fn(),
+        getText: vi.fn()
     };
 
     // der KI-Tab wird erst geöffnet, wenn der Test es braucht: nur dann wird die Summary geladen
-    async function createComponent(summary$: Observable<string | null>) {
+    async function createComponent(summary$: Observable<string | null>, text$: Observable<string | null> = of(null)) {
         TestBed.configureTestingModule({
             providers: [
                 provideRouter([]),
@@ -116,6 +117,7 @@ describe('DocumentDetailComponent summary', () => {
         documentService.getDocumentById.mockReturnValue(of({ id: 'abc-123', title: 'Rechnung', createdAt: '', tags: [] }));
         documentService.downloadDocument.mockReturnValue(of(new Blob(['%PDF-1.7'])));
         documentService.getSummary.mockReturnValue(summary$);
+        documentService.getText.mockReturnValue(text$);
         const fixture = TestBed.createComponent(DocumentDetailComponent);
         fixture.detectChanges();
         await fixture.whenStable();
@@ -153,6 +155,39 @@ describe('DocumentDetailComponent summary', () => {
         expect(fixture.nativeElement.textContent).toContain('Kurze Zusammenfassung');
     });
 
+    it('shows the OCR text in the ai tab', async () => {
+        const fixture = await createComponent(of(null), of('Hello World'));
+
+        await openAiTab(fixture);
+
+        expect(documentService.getText).toHaveBeenCalledWith('abc-123');
+        expect(fixture.nativeElement.querySelector('#ocr-text').value).toBe('Hello World');
+    });
+
+    it('does not load the OCR text while the ai tab is closed', async () => {
+        await createComponent(of(null), of('Hello World'));
+
+        expect(documentService.getText).not.toHaveBeenCalled();
+    });
+
+    it('shows a hint without an error when there is no OCR text yet', async () => {
+        const fixture = await createComponent(of(null), of(null));
+
+        await openAiTab(fixture);
+
+        expect(fixture.nativeElement.querySelector('#ocr-text').value).toBe('Noch kein OCR Text verfügbar.');
+        expect(fixture.componentInstance.textErrorMessage()).toBeNull();
+    });
+
+    it('shows an error message when the OCR text cannot be loaded', async () => {
+        const fixture = await createComponent(of(null), throwError(() => new HttpErrorResponse({ status: 503 })));
+
+        await openAiTab(fixture);
+
+        expect(fixture.componentInstance.textErrorMessage())
+            .toBe('Das Laden des OCR-Texts ist derzeit nicht verfügbar. Bitte versuche es später erneut.');
+    });
+
     it('shows a waiting state while the backend has no summary yet', async () => {
         const fixture = await createComponent(of(null));
 
@@ -185,5 +220,73 @@ describe('DocumentDetailComponent summary', () => {
         expect(fixture.componentInstance.summaryState().status).toBe('timeout');
         expect(request).toHaveBeenCalledTimes(20);
         expect(fixture.nativeElement.textContent).toContain('Erneut prüfen');
+    });
+
+    it('keeps polling until the summary appears and then stops', async () => {
+        const answers: (string | null)[] = [null, null, 'Fertig'];
+        let call = 0;
+        const request = vi.fn(() => of(answers[call++] ?? null));
+        const fixture = await createComponent(defer(request));
+        vi.useFakeTimers();
+
+        fixture.componentInstance.activeTab.set('ai');
+        fixture.detectChanges();
+        await vi.advanceTimersByTimeAsync(3000 * 10);
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.summaryState()).toEqual({ status: 'ready', text: 'Fertig' });
+        expect(request).toHaveBeenCalledTimes(3); // danach keine weiteren Anfragen
+    });
+
+    it('stops polling when the user leaves the ai tab', async () => {
+        const request = vi.fn(() => of(null));
+        const fixture = await createComponent(defer(request));
+        vi.useFakeTimers();
+
+        fixture.componentInstance.activeTab.set('ai');
+        fixture.detectChanges();
+        await vi.advanceTimersByTimeAsync(3000 * 2);
+        fixture.componentInstance.activeTab.set('metadata');
+        fixture.detectChanges();
+        const callsAtLeave = request.mock.calls.length;
+        await vi.advanceTimersByTimeAsync(3000 * 10);
+
+        expect(request.mock.calls.length).toBeLessThanOrEqual(callsAtLeave + 1); // höchstens noch die Antwort im Flug
+    });
+
+    it('checks again on request after the timeout and shows the summary that arrived meanwhile', async () => {
+        let summary: string | null = null;
+        const request = vi.fn(() => of(summary));
+        const fixture = await createComponent(defer(request));
+        vi.useFakeTimers();
+
+        fixture.componentInstance.activeTab.set('ai');
+        fixture.detectChanges();
+        await vi.advanceTimersByTimeAsync(3000 * 25);
+        expect(fixture.componentInstance.summaryState().status).toBe('timeout');
+
+        summary = 'Jetzt da';
+        fixture.componentInstance.summaryResource.reload();
+        await vi.advanceTimersByTimeAsync(10);
+        fixture.detectChanges();
+
+        expect(fixture.componentInstance.summaryState()).toEqual({ status: 'ready', text: 'Jetzt da' });
+    });
+
+    it('shows summary text containing html as plain text', async () => {
+        const fixture = await createComponent(of('<img src=x onerror=alert(1)> <b>fett</b>'));
+
+        await openAiTab(fixture);
+
+        expect(fixture.nativeElement.querySelector('img')).toBeNull();
+        expect(fixture.nativeElement.textContent).toContain('<b>fett</b>');
+    });
+
+    it('shows a not-found message when the document was deleted meanwhile', async () => {
+        const fixture = await createComponent(throwError(() => new HttpErrorResponse({ status: 404 })));
+
+        await openAiTab(fixture);
+
+        expect(fixture.componentInstance.summaryErrorMessage()).toContain('nicht gefunden');
     });
 });

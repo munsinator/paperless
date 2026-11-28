@@ -1,6 +1,6 @@
 import { HttpErrorResponse } from '@angular/common/http';
 
-export type ErrorAction = 'load' | 'search' | 'save' | 'delete' | 'upload' | 'download' | 'summary';
+export type ErrorAction = 'load' | 'search' | 'save' | 'delete' | 'upload' | 'download' | 'summary' | 'text';
 
 const ACTION_LABEL: Record<ErrorAction, string> = {
     load: 'Das Laden',
@@ -9,7 +9,8 @@ const ACTION_LABEL: Record<ErrorAction, string> = {
     delete: 'Das Löschen',
     upload: 'Der Upload',
     download: 'Der Download',
-    summary: 'Das Laden der Zusammenfassung'
+    summary: 'Das Laden der Zusammenfassung',
+    text: 'Das Laden des OCR-Texts'
 };
 
 export const FORBIDDEN_MESSAGE = 'Dazu hast du keine Berechtigung.';

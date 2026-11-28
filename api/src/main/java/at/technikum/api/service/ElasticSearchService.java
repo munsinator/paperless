@@ -112,17 +112,27 @@ public class ElasticSearchService implements SearchService {
 
     @Override
     public Optional<String> findSummary(UUID documentId) {
+        return findField(documentId, SUMMARY_FIELD);
+    }
+
+    @Override
+    public Optional<String> findText(UUID documentId) {
+        return findField(documentId, TEXT_FIELD);
+    }
+
+    // liest ein einzelnes Feld des Index-Dokuments; leer, solange es noch nicht geschrieben wurde
+    private Optional<String> findField(UUID documentId, String field) {
         try {
             GetResponse<Map> response = client.get(get -> get
                     .index(INDEX)
                     .id(documentId.toString())
-                    .sourceIncludes(SUMMARY_FIELD), Map.class); // nur das Feld summary laden
+                    .sourceIncludes(field), Map.class); // nur dieses Feld laden
             if (!response.found() || response.source() == null) {
-                return Optional.empty(); // noch keine Zusammenfassung vorhanden
+                return Optional.empty();
             }
-            return Optional.ofNullable(response.source().get(SUMMARY_FIELD)).map(Object::toString);
+            return Optional.ofNullable(response.source().get(field)).map(Object::toString);
         } catch (IOException | ElasticsearchException exception) {
-            throw new SearchException("Reading summary from Elasticsearch failed", exception);
+            throw new SearchException("Reading " + field + " from Elasticsearch failed", exception);
         }
     }
 

@@ -8,6 +8,7 @@ import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.exceptions.SummaryUnavailableException;
+import at.technikum.api.exceptions.TextUnavailableException;
 import at.technikum.api.mapper.DocumentMapperImpl;
 import at.technikum.api.service.JwtService;
 import at.technikum.api.service.UserService;
@@ -353,6 +354,47 @@ class DocumentControllerTests {
                 .thenThrow(new SummaryUnavailableException(documentId, new IOException("down")));
 
         mockMvc.perform(get("/document/{documentId}/summary", documentId))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value(503));
+    }
+
+    @Test
+    void get_document_text_returns_text() throws Exception {
+        UUID documentId = UUID.randomUUID();
+        when(documentService.findText(documentId)).thenReturn(Optional.of("Hello World"));
+
+        mockMvc.perform(get("/document/{documentId}/text", documentId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.text").value("Hello World"));
+    }
+
+    @Test
+    void get_document_text_returns_no_content_while_ocr_is_not_finished_yet() throws Exception {
+        UUID documentId = UUID.randomUUID();
+        when(documentService.findText(documentId)).thenReturn(Optional.empty());
+
+        mockMvc.perform(get("/document/{documentId}/text", documentId))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void get_document_text_of_missing_document_returns_not_found() throws Exception {
+        UUID missingId = UUID.randomUUID();
+        when(documentService.findDocumentById(missingId)).thenThrow(new DocumentNotFoundException(missingId));
+
+        mockMvc.perform(get("/document/{documentId}/text", missingId))
+                .andExpect(status().isNotFound());
+
+        verify(documentService, never()).findText(any());
+    }
+
+    @Test
+    void get_document_text_returns_503_when_search_index_is_unavailable() throws Exception {
+        UUID documentId = UUID.randomUUID();
+        when(documentService.findText(documentId))
+                .thenThrow(new TextUnavailableException(documentId, new IOException("down")));
+
+        mockMvc.perform(get("/document/{documentId}/text", documentId))
                 .andExpect(status().isServiceUnavailable())
                 .andExpect(jsonPath("$.status").value(503));
     }

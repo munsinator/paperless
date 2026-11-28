@@ -9,6 +9,7 @@ import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.exceptions.StorageException;
 import at.technikum.api.exceptions.SummaryUnavailableException;
+import at.technikum.api.exceptions.TextUnavailableException;
 import at.technikum.api.repository.DocumentRepository;
 import at.technikum.api.repository.DocumentTypeRepository;
 import at.technikum.api.service.DocumentDeletedEvent;
@@ -296,6 +297,36 @@ class DocumentServiceImplTest {
 
         SummaryUnavailableException exception =
                 assertThrows(SummaryUnavailableException.class, () -> documentService.findSummary(id));
+
+        assertSame(cause, exception.getCause());
+    }
+
+    @Test
+    void find_text_returns_text_from_search_index() {
+        UUID id = UUID.randomUUID();
+        when(searchService.findText(id)).thenReturn(Optional.of("Hello World"));
+
+        assertEquals(Optional.of("Hello World"), documentService.findText(id));
+
+        verifyNoInteractions(documentRepository);
+    }
+
+    @Test
+    void find_text_returns_empty_when_ocr_is_not_finished_yet() {
+        UUID id = UUID.randomUUID();
+        when(searchService.findText(id)).thenReturn(Optional.empty());
+
+        assertEquals(Optional.empty(), documentService.findText(id));
+    }
+
+    @Test
+    void find_text_wraps_search_failure_in_text_unavailable_exception() {
+        UUID id = UUID.randomUUID();
+        SearchException cause = new SearchException("Reading text from Elasticsearch failed", new IOException("down"));
+        when(searchService.findText(id)).thenThrow(cause);
+
+        TextUnavailableException exception =
+                assertThrows(TextUnavailableException.class, () -> documentService.findText(id));
 
         assertSame(cause, exception.getCause());
     }

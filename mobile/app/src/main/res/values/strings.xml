@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Paperless</string>
+    <string name="error_title">Keine Verbindung</string>
+    <string name="error_text">Die Seite konnte nicht geladen werden. Bitte prüfe deine Verbindung und ob der Server läuft.</string>
+    <string name="error_retry">Erneut versuchen</string>
+    <string name="download_saved">PDF im Ordner Downloads gespeichert</string>
+    <string name="download_failed">Die PDF konnte nicht gespeichert werden</string>
+</resources>

@@ -16,6 +16,7 @@ The current implementation supports user registration and login, document metada
 | Object storage | Silo (`pgsty/silo`, MinIO-compatible fork), MinIO Java client |
 | Search engine | Elasticsearch 9.4, `elasticsearch-java` client |
 | GenAI worker / provider (planned) | Gemini integration |
+| Mobile app (`mobile/`) | Android, Java, `WebView` around the web UI, generated with an AI coding tool |
 
 
 ## Architecture
@@ -27,7 +28,10 @@ Upload ─► REST: save metadata in PostgreSQL ─► store PDF in Silo ─► 
             └─► after commit: DocumentSavedEvent ─► exchange document.events
                   └─► OCR worker: load PDF from Silo, run Tesseract
                         └─► DocumentOcrCompletedEvent ─► exchange ocr.events
-                              └─► REST result listener: add OCR text to the Elasticsearch entry
+                              ├─► REST result listener: add OCR text to the Elasticsearch entry
+                              └─► GenAI worker (queue genai.ocr.events): ask Gemini for a summary
+                                    └─► DocumentSummarizedEvent ─► exchange genai.events
+                                          └─► REST summary listener: add the summary to the Elasticsearch entry
 Search ─► REST ─► Elasticsearch (ranked document IDs) ─► load documents from PostgreSQL
 ```
 
@@ -48,8 +52,22 @@ All services use these names and the same `.env` variables:
 | Storage variables | `MINIO_ENDPOINT`, `MINIO_ACCESS_KEY`, `MINIO_SECRET_KEY`, `MINIO_BUCKET` |
 | Upload event | exchange `document.events` (fanout) → queue `ocr.document.events`, payload `{ documentId, documentName }` |
 | OCR result event | exchange `ocr.events` (fanout) → queue `api.ocr.events`, payload `{ documentId, documentName, content }` |
+| GenAI worker input | queue `genai.ocr.events`, bound to `ocr.events`, same payload as above |
 | Summary event | exchange `genai.events` (fanout) → queue `api.genai.events`, payload `{ documentId, summary }` |
 | Search index | `documents`, fields `title`, `text` and `summary`, Elasticsearch `_id` = document ID |
+
+### Who owns which exchange and queue
+
+An exchange belongs to the service that publishes to it, a queue to the service that reads from it. If two services declare the same thing, the arguments have to match (durable, fanout).
+
+| Exchange | Published by | Queue | Read by | Why |
+| --- | --- | --- | --- | --- |
+| `document.events` | REST API | `ocr.document.events` | OCR worker | start OCR after an upload |
+| `ocr.events` | OCR worker | `api.ocr.events` | REST API | save the OCR text in Elasticsearch |
+| `ocr.events` | OCR worker | `genai.ocr.events` | GenAI worker | needs the same text for the summary |
+| `genai.events` | GenAI worker | `api.genai.events` | REST API | save the summary in Elasticsearch |
+
+A failed message is retried three times and then dropped, we have no dead-letter queue. So if Elasticsearch is down when a summary arrives, that summary is lost and the document keeps answering `204`.
 
 ### REST interface
 
@@ -107,6 +125,14 @@ Copy-Item .env.example .env
 
 The `.env` file is git-ignored. The database credentials must match the PostgreSQL service configuration.
 
+#### Gemini key
+
+The GenAI worker needs a Gemini API key. Create one at https://aistudio.google.com/app/apikey and put it into `.env` as `SPRING_AI_GOOGLE_GENAI_API_KEY`.
+
+The free tier has rate limits (see AI Studio for the current numbers). On a `429` the worker waits and tries again.
+
+Without a key everything else still works. The worker logs an error and no summary is created, so the AI tab just says there is none yet.
+
 ### 2. Build and start all services
 
 Start the application with Docker Compose from project root:
@@ -141,9 +167,16 @@ The repository contains `hello-world.pdf` (text: "Hello World") for a quick end-
 2. Upload `hello-world.pdf` with a title that does **not** contain "Hello", e.g. `Test document`.
 3. Wait a few seconds for the OCR worker (`docker compose logs -f ocr-worker` shows `OCR completed for documentId=...`).
 4. Search for `Hello` (or the typo `helo`, the search is fuzzy): the document appears, found by its OCR text and not by its title.
+5. Open the document and go to the AI tab. The OCR text is there right away, the summary a few seconds later (needs the Gemini key).
 
 Optional check of the index: `curl http://localhost:9200/documents/_search?q=text:hello`
 
+
+### 5. Mobile app (optional)
+
+The `mobile/` folder contains an Android app: a thin `WebView` shell that shows the web UI from step 3. Start the stack first, then open `mobile/` in Android Studio and run it on an emulator (the emulator reaches the host as `10.0.2.2`). Spec, the AI prompt, build steps for the command line and for a real phone are in [mobile/README.md](mobile/README.md).
+
+Known limitation: the PDF preview on the detail page stays empty in the app, because the Android WebView cannot show PDFs inside an `<iframe>`. The "Herunterladen" button works and saves the file to the phone's Downloads folder. A real preview would need PDF.js in the frontend, which we decided against for now.
 
 ### How to stop the application
 

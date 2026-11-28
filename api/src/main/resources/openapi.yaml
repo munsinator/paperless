@@ -165,6 +165,31 @@ paths:
           description: Document not found
         "503":
           description: The search index is currently not available
+  /document/{documentId}/text:
+    get:
+      tags:
+        - document-controller
+      operationId: findTextById
+      parameters:
+        - name: documentId
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: The OCR text (stored in Elasticsearch)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ResponseTextDTO"
+        "204":
+          description: The OCR text is not available yet
+        "404":
+          description: Document not found
+        "503":
+          description: The search index is currently not available
 components:
   schemas:
     AuthDTO:
@@ -219,6 +244,11 @@ components:
       type: object
       properties:
         summary:
+          type: string
+    ResponseTextDTO:
+      type: object
+      properties:
+        text:
           type: string
     ResponseDocumentDTO:
       type: object

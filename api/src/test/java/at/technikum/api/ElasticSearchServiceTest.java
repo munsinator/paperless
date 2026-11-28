@@ -4,6 +4,7 @@ import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.service.ElasticSearchService;
 import co.elastic.clients.elasticsearch.ElasticsearchClient;
 import co.elastic.clients.elasticsearch._types.ElasticsearchException;
+import co.elastic.clients.elasticsearch.core.GetResponse;
 import co.elastic.clients.elasticsearch.core.SearchRequest;
 import co.elastic.clients.elasticsearch.core.SearchResponse;
 import co.elastic.clients.util.ObjectBuilder;
@@ -15,6 +16,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Function;
 
@@ -129,6 +132,39 @@ class ElasticSearchServiceTest {
     void save_text_wraps_connection_failure() throws IOException {
         when(client.update(any(Function.class), eq(Void.class))).thenThrow(new IOException("unavailable"));
         assertThrows(SearchException.class, () -> searchService.saveText(UUID.randomUUID(), "Hello World"));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void find_text_returns_text_field_of_the_index_document() throws IOException {
+        GetResponse<Map> response = mock(GetResponse.class);
+        when(response.found()).thenReturn(true);
+        when(response.source()).thenReturn(Map.of("text", "Hello World"));
+        when(client.get(any(Function.class), eq(Map.class))).thenReturn(response);
+
+        assertEquals(Optional.of("Hello World"), searchService.findText(UUID.randomUUID()));
+    }
+
+    @Test
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    void find_text_returns_empty_when_document_or_field_does_not_exist_yet() throws IOException {
+        GetResponse<Map> notFound = mock(GetResponse.class);
+        when(notFound.found()).thenReturn(false);
+        GetResponse<Map> withoutText = mock(GetResponse.class);
+        when(withoutText.found()).thenReturn(true);
+        when(withoutText.source()).thenReturn(Map.of());
+        when(client.get(any(Function.class), eq(Map.class))).thenReturn(notFound, withoutText);
+
+        assertEquals(Optional.empty(), searchService.findText(UUID.randomUUID()));
+        assertEquals(Optional.empty(), searchService.findText(UUID.randomUUID()));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void find_text_wraps_connection_failure_in_search_exception() throws IOException {
+        when(client.get(any(Function.class), eq(Map.class))).thenThrow(new IOException("unavailable"));
+
+        assertThrows(SearchException.class, () -> searchService.findText(UUID.randomUUID()));
     }
 
     private void mockResponse(SearchResponse<Void> response) throws IOException {

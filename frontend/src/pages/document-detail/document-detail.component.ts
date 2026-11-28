@@ -67,8 +67,8 @@ export class DocumentDetailComponent {
     });
 
     // Die Summary entsteht asynchron (OCR -> GenAI-Worker): solange das Backend 204 liefert (null), wird nachgefragt.
-    // Läuft nur, solange der KI-Tab offen ist: wechselt params auf undefined (anderer Tab) oder wird die Komponente
-    // zerstört, beendet rxResource den Stream.
+    // Läuft nur, solange der KI-Tab offen ist: wird die Komponente zerstört, beendet rxResource den Stream; beim Wechsel
+    // auf einen anderen Tab (params undefined) tut es das nicht, deshalb prüft takeWhile unten auch den Tab.
     readonly summaryResource = rxResource({
         params: () => this.activeTab() === 'ai' ? this.documentId() || undefined : undefined,
         stream: ({ params: id }) => this.documentService.getSummary(id).pipe(
@@ -78,7 +78,7 @@ export class DocumentDetailComponent {
                 if (text !== null) return { status: 'ready', text };
                 return attempt === SUMMARY_MAX_POLLS - 1 ? SUMMARY_TIMED_OUT : SUMMARY_PENDING;
             }),
-            takeWhile(state => state.status === 'pending', true) // inklusive: ready bzw. timeout wird noch ausgegeben
+            takeWhile(state => state.status === 'pending' && this.activeTab() === 'ai', true) // inklusive: ready bzw. timeout wird noch ausgegeben
         )
     });
 
@@ -90,6 +90,17 @@ export class DocumentDetailComponent {
     readonly summaryErrorMessage = computed(() => {
         const error = this.summaryResource.error();
         return error ? toErrorMessage(this.unwrap(error), 'summary') : null;
+    });
+
+    // Der OCR-Text liegt nur im Suchindex (nicht in der DB). Wie die Summary wird er erst beim Öffnen des KI-Tabs geladen.
+    readonly textResource = rxResource({
+        params: () => this.activeTab() === 'ai' ? this.documentId() || undefined : undefined,
+        stream: ({ params: id }) => this.documentService.getText(id)
+    });
+    readonly ocrText = computed(() => this.textResource.hasValue() ? this.textResource.value() : null);
+    readonly textErrorMessage = computed(() => {
+        const error = this.textResource.error();
+        return error ? toErrorMessage(this.unwrap(error), 'text') : null;
     });
 
     readonly safeFileUrl = signal<SafeResourceUrl | null>(null);
