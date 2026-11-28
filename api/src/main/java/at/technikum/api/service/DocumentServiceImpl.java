@@ -4,6 +4,7 @@ import at.technikum.api.exceptions.DocumentNotFoundException;
 import at.technikum.api.exceptions.InvalidFileException;
 import at.technikum.api.exceptions.SearchException;
 import at.technikum.api.exceptions.SummaryUnavailableException;
+import at.technikum.api.exceptions.TextUnavailableException;
 import at.technikum.api.entity.Document;
 import at.technikum.api.entity.DocumentType;
 import at.technikum.api.entity.DocumentTypeEnum;
@@ -149,6 +150,16 @@ public class DocumentServiceImpl implements DocumentService {
         } catch (SearchException exception) {
             log.warn("Summary of document {} could not be read from the search index", documentId, exception);
             throw new SummaryUnavailableException(documentId, exception);
+        }
+    }
+
+    @Override
+    public Optional<String> findText(UUID documentId) {
+        try {
+            return searchService.findText(documentId);
+        } catch (SearchException exception) {
+            log.warn("OCR text of document {} could not be read from the search index", documentId, exception);
+            throw new TextUnavailableException(documentId, exception);
         }
     }
 

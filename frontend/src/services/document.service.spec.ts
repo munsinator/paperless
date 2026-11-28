@@ -104,6 +104,27 @@ describe('DocumentService', () => {
         httpMock.verify();
     });
 
+    it('loads the OCR text of a document', () => {
+        let result: string | null | undefined;
+
+        service.getText('abc-123').subscribe(text => (result = text));
+
+        const req = httpMock.expectOne('/api/document/abc-123/text');
+        expect(req.request.method).toBe('GET');
+        req.flush({ text: 'Hello World' });
+        expect(result).toBe('Hello World');
+    });
+
+    it('maps a 204 response to null while the OCR text is not available yet', () => {
+        let result: string | null | undefined;
+
+        service.getText('abc-123').subscribe(text => (result = text));
+
+        httpMock.expectOne('/api/document/abc-123/text').flush(null, { status: 204, statusText: 'No Content' });
+        expect(result).toBeNull();
+        httpMock.verify();
+    });
+
     it('omits the type when none is selected', () => {
         const file = new File(['%PDF-1.7'], 'x.pdf', { type: 'application/pdf' });
 

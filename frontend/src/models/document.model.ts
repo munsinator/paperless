@@ -33,6 +33,5 @@ export interface Document {
     documentType?: DocumentType;
     createdAt: string;
     tags?: string[];
-    ocrText?: string;
     fileUrl?: string;
 }

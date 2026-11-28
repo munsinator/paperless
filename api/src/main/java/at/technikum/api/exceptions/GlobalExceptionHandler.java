@@ -101,6 +101,17 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(errorResponse, HttpStatus.SERVICE_UNAVAILABLE);
     }
 
+    @ExceptionHandler(TextUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleTextUnavailableException(TextUnavailableException exception) {
+        logger.warn("OCR text unavailable: {}", exception.getMessage()); // Stacktrace hat der Service schon geloggt
+        ErrorResponse errorResponse = new ErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                "Service Unavailable",
+                "The OCR text is currently not available"
+        );
+        return new ResponseEntity<>(errorResponse, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
     @ExceptionHandler(MaxUploadSizeExceededException.class)
     public ResponseEntity<ErrorResponse> handleMaxUploadSizeExceeded(MaxUploadSizeExceededException exception) {
         logger.warn("Upload too large: {}", exception.getMessage());

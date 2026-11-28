@@ -18,7 +18,6 @@ public class ResponseDocumentDTO {
     private String title;
     private LocalDate createdAt;
     private List<String> tags;
-    private String ocrText;
     private String fileUrl;
   private DocumentTypeEnum documentType;
 

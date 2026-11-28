@@ -12,6 +12,8 @@ public interface SearchService {
 
     void saveText(UUID documentId, String text);
 
+    Optional<String> findText(UUID documentId);
+
     void saveSummary(UUID documentId, String summary);
 
     Optional<String> findSummary(UUID documentId);
